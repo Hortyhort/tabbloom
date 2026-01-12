@@ -1846,6 +1846,9 @@ async function initGarden() {
         statsBtn.addEventListener('click', showGardenStats);
     }
 
+    // Set up Quick Actions mini-bar
+    setupQuickActions();
+
     // Load garden stats for tracking
     await loadGardenStats();
 
@@ -1965,6 +1968,64 @@ async function harvestDormantTabs() {
     }
 
     console.log(`Harvested ${harvestedCount} dormant tabs!`);
+}
+
+// Set up Quick Actions mini-bar
+function setupQuickActions() {
+    const quickHarvest = document.getElementById('quickHarvest');
+    const quickRefresh = document.getElementById('quickRefresh');
+    const quickShare = document.getElementById('quickShare');
+    const quickSettings = document.getElementById('quickSettings');
+
+    if (quickHarvest) {
+        quickHarvest.addEventListener('click', () => {
+            AudioSystem.playHoverSoft();
+            harvestDormantTabs();
+        });
+    }
+
+    if (quickRefresh) {
+        quickRefresh.addEventListener('click', async () => {
+            AudioSystem.playGrowthRustle();
+            // Re-fetch tabs and refresh garden
+            const activityResult = await chrome.storage.local.get(['tabActivity']);
+            const tabActivity = activityResult.tabActivity || {};
+
+            const tabs = await chrome.tabs.query({});
+            plants.forEach(p => {
+                if (p.element) p.element.remove();
+            });
+
+            plants = tabs.map(tab => {
+                const lastActiveTime = tabActivity[tab.id] || Date.now();
+                return new Plant(tab, lastActiveTime);
+            });
+            layoutPlants();
+
+            plants.forEach((plant, index) => {
+                plant.element = createPlantElement(plant.tab, plant.x, plant.y, index);
+            });
+
+            updateStatsDisplay();
+
+            // Visual feedback - brief sparkle
+            sparkleParticles(width / 2, height / 2);
+        });
+    }
+
+    if (quickShare) {
+        quickShare.addEventListener('click', () => {
+            AudioSystem.playHoverSoft();
+            captureGardenScreenshot();
+        });
+    }
+
+    if (quickSettings) {
+        quickSettings.addEventListener('click', () => {
+            AudioSystem.playHoverSoft();
+            showShareSettingsPanel();
+        });
+    }
 }
 
 function loop() {
