@@ -9,6 +9,140 @@ let width, height;
 let hoveredPlant = null;
 let currentCoins = 120; // Starting coins
 
+// ============================================
+// Web Audio API Sound System (ASMR Sounds)
+// ============================================
+const AudioSystem = {
+    ctx: null,
+
+    init() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    },
+
+    ensureContext() {
+        if (!this.ctx) this.init();
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+    },
+
+    // Gentle chime on harvest (high, pleasant note)
+    playHarvestChime() {
+        this.ensureContext();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, this.ctx.currentTime); // A5
+        osc.frequency.exponentialRampToValueAtTime(1320, this.ctx.currentTime + 0.1); // E6
+
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.4);
+
+        // Second harmonic for richness
+        const osc2 = this.ctx.createOscillator();
+        const gain2 = this.ctx.createGain();
+        osc2.connect(gain2);
+        gain2.connect(this.ctx.destination);
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(1760, this.ctx.currentTime);
+        gain2.gain.setValueAtTime(0.05, this.ctx.currentTime);
+        gain2.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+        osc2.start(this.ctx.currentTime);
+        osc2.stop(this.ctx.currentTime + 0.3);
+    },
+
+    // Soft rustle on growth/refresh
+    playGrowthRustle() {
+        this.ensureContext();
+        const bufferSize = this.ctx.sampleRate * 0.15;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Pink noise for natural rustle
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufferSize, 2);
+        }
+
+        const source = this.ctx.createBufferSource();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        source.buffer = buffer;
+        filter.type = 'bandpass';
+        filter.frequency.value = 2000;
+        filter.Q.value = 0.5;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
+
+        source.start();
+    },
+
+    // Sad droop tone on wilt
+    playWiltDroop() {
+        this.ensureContext();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime); // A4
+        osc.frequency.exponentialRampToValueAtTime(220, this.ctx.currentTime + 0.3); // Drop to A3
+
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.35);
+    },
+
+    // Soft hover sound
+    playHoverSoft() {
+        this.ensureContext();
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.value = 600;
+
+        gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+
+        osc.start(this.ctx.currentTime);
+        osc.stop(this.ctx.currentTime + 0.1);
+    }
+};
+
+// Sparkle particles for growth animation
+function sparkleParticles(x, y) {
+    for (let i = 0; i < 8; i++) {
+        particles.push({
+            x,
+            y: y - 20,
+            vx: (Math.random() - 0.5) * 3,
+            vy: Math.random() * -3 - 1,
+            life: 40,
+            size: 2 + Math.random() * 3,
+            color: ['#FFD700', '#FFF8DC', '#FFFACD', '#FFE4B5'][Math.floor(Math.random() * 4)],
+            isSparkle: true
+        });
+    }
+}
+
 // Update coin display
 function updateCoins(amount) {
     currentCoins += amount;
@@ -61,13 +195,15 @@ function createPlantElement(tab, x, y) {
     plant.style.width = `${PLANT_SIZE}px`;
     plant.style.height = `${PLANT_HEIGHT}px`;
     plant.style.background = 'transparent'; // Canvas draws the visual
-    plant.style.transition = 'transform 0.4s ease, filter 0.3s ease';
+    plant.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease-out';
     plant.style.cursor = 'pointer';
     plant.style.zIndex = '10';
+    plant.style.transformOrigin = 'center bottom';
 
     plant.addEventListener('mouseenter', () => {
-        plant.style.transform = 'scale(1.15) rotate(4deg)';
-        plant.style.filter = 'drop-shadow(0 0 12px rgba(255, 183, 197, 0.8)) brightness(1.2)';
+        plant.style.transform = 'scale(1.12) rotate(2deg) translateY(-3px)';
+        plant.style.filter = 'drop-shadow(0 0 15px rgba(255, 183, 197, 0.6)) brightness(1.1)';
+        AudioSystem.playHoverSoft();
         // Show tooltip
         tooltip.style.left = `${x + 15}px`;
         tooltip.style.top = `${y - 60}px`;
@@ -76,7 +212,7 @@ function createPlantElement(tab, x, y) {
     });
 
     plant.addEventListener('mouseleave', () => {
-        plant.style.transform = 'scale(1) rotate(0deg)';
+        plant.style.transform = 'scale(1) rotate(0deg) translateY(0)';
         plant.style.filter = 'none';
         tooltip.classList.add('hidden');
     });
@@ -86,6 +222,7 @@ function createPlantElement(tab, x, y) {
             console.log('Harvesting tab:', tab.title);
             await chrome.tabs.remove(tab.id);
             bloomParticles(x, y);
+            AudioSystem.playHarvestChime();
             plant.remove();
             // Remove from plants array
             plants = plants.filter(p => p.tabId !== tab.id);
@@ -222,8 +359,13 @@ class Plant {
         this.element = null; // DOM element reference
         this.lastActiveTime = lastActiveTime || Date.now();
         this.age = calculateHealthFromActivity(this.lastActiveTime);
+        this.previousAge = this.age; // Track for animations
         this.sway = Math.random() * Math.PI * 2; // Random start phase
         this.swaySpeed = 0.02 + Math.random() * 0.02;
+
+        // Growth animation state
+        this.growthScale = 1;
+        this.growthTarget = 1;
 
         // Pre-generate random values for consistent rendering
         this.spotOffsets = Array(6).fill(0).map(() => (Math.random() - 0.5) * 0.6);
@@ -231,13 +373,41 @@ class Plant {
         this.stamenLengths = Array(6).fill(0).map(() => 6 + Math.random() * 2);
     }
 
-    // Update health based on current time
+    // Update health based on current time, with animation triggers
     updateHealth() {
-        this.age = calculateHealthFromActivity(this.lastActiveTime);
+        const newAge = calculateHealthFromActivity(this.lastActiveTime);
+
+        // Check for growth (tab was used, health improved)
+        if (newAge < this.previousAge - 0.1) {
+            this.triggerGrowthAnimation();
+            AudioSystem.playGrowthRustle();
+        }
+
+        // Check for wilting transition
+        if (newAge >= 0.7 && this.previousAge < 0.7) {
+            AudioSystem.playWiltDroop();
+        }
+
+        this.previousAge = this.age;
+        this.age = newAge;
+    }
+
+    // Trigger growth animation (upward stretch + sparkles)
+    triggerGrowthAnimation() {
+        this.growthTarget = 1.15;
+        sparkleParticles(this.x, this.y);
+
+        // Return to normal after animation
+        setTimeout(() => {
+            this.growthTarget = 1;
+        }, 300);
     }
 
     update() {
         this.sway += this.swaySpeed;
+
+        // Smooth growth animation
+        this.growthScale += (this.growthTarget - this.growthScale) * 0.1;
     }
 
     draw() {
@@ -248,13 +418,16 @@ class Plant {
         ctx.save();
         ctx.translate(this.x, this.y);
 
+        // Apply growth animation scale
+        const baseScale = SCALE * this.growthScale;
+
         // Apply hover effects
         if (isHovered) {
-            ctx.scale(SCALE * 1.15, SCALE * 1.15);
+            ctx.scale(baseScale * 1.15, baseScale * 1.15);
             ctx.shadowColor = 'rgba(255, 183, 197, 0.6)';
             ctx.shadowBlur = 15;
         } else {
-            ctx.scale(SCALE, SCALE);
+            ctx.scale(baseScale, baseScale);
         }
 
         // Draw elegant curved stem
@@ -581,6 +754,9 @@ async function harvestDormantTabs() {
 
     let harvestedCount = 0;
 
+    // Play harvest chime once for batch
+    AudioSystem.playHarvestChime();
+
     for (const plant of dormantPlants) {
         try {
             await chrome.tabs.remove(plant.tabId);
@@ -589,6 +765,8 @@ async function harvestDormantTabs() {
                 plant.element.remove();
             }
             harvestedCount++;
+            // Small delay between harvests for satisfying cascade
+            await new Promise(r => setTimeout(r, 100));
         } catch (err) {
             console.error("Failed to close tab:", err);
         }
@@ -600,6 +778,9 @@ async function harvestDormantTabs() {
 
     // Award coins for batch harvest (bonus for efficiency!)
     updateCoins(harvestedCount * 15);
+
+    // Update stats
+    updateStatsDisplay();
 
     console.log(`Harvested ${harvestedCount} dormant tabs!`);
 }
@@ -618,7 +799,7 @@ function loop() {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += 0.08; // gentle gravity
+        p.vy += p.isSparkle ? 0.02 : 0.08; // lighter gravity for sparkles
         p.life--;
 
         if (p.life <= 0) {
@@ -626,9 +807,22 @@ function loop() {
             continue;
         }
 
-        ctx.globalAlpha = p.life / 80;
-        ctx.fillStyle = p.color;
-        ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        const maxLife = p.isSparkle ? 40 : 80;
+        ctx.globalAlpha = p.life / maxLife;
+
+        if (p.isSparkle) {
+            // Twinkling sparkle effect
+            const twinkle = Math.sin(p.life * 0.5) * 0.5 + 0.5;
+            ctx.globalAlpha *= twinkle;
+            ctx.fillStyle = p.color;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, p.size * twinkle, 0, Math.PI * 2);
+            ctx.fill();
+        } else {
+            // Regular petal particles
+            ctx.fillStyle = p.color;
+            ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+        }
     }
     ctx.globalAlpha = 1;
 
