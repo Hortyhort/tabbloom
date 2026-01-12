@@ -389,15 +389,15 @@ function createPlantElement(tab, x, y) {
 }
 
 // Canvas-based particle burst effect when harvesting
-function bloomParticles(x, y) {
-    for (let i = 0; i < 20; i++) {
+function bloomParticles(x, y, count = 20) {
+    for (let i = 0; i < count; i++) {
         particles.push({
-            x,
-            y,
-            vx: (Math.random() - 0.5) * 6,
-            vy: Math.random() * -6 - 3,
-            life: 80,
-            size: 4 + Math.random() * 6,
+            x: x,              // center of clicked flower
+            y: y,
+            vx: (Math.random() - 0.5) * 8,
+            vy: Math.random() * -7 - 4, // strong upward burst
+            life: 90,
+            size: 5 + Math.random() * 8,
             color: [COLORS.petalPink, COLORS.petalWhite, COLORS.anther, COLORS.leaf][Math.floor(Math.random() * 4)]
         });
     }
@@ -445,6 +445,42 @@ canvas.addEventListener('mouseleave', () => {
     hoveredPlant = null;
     tooltip.classList.add('hidden');
     canvas.style.cursor = 'default';
+});
+
+// Canvas click handler for harvesting plants
+canvas.addEventListener('click', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    // Find the closest plant to the click
+    let closestPlant = null;
+    let minDist = Infinity;
+    plants.forEach(plant => {
+        const dist = Math.hypot(clickX - plant.x, clickY - plant.y);
+        if (dist < 50 && dist < minDist) { // hit radius + buffer
+            minDist = dist;
+            closestPlant = plant;
+        }
+    });
+
+    if (closestPlant) {
+        // Harvest: close the tab
+        chrome.tabs.remove(closestPlant.tabId, () => {
+            // Spawn particles AT THE FLOWER'S CENTER
+            bloomParticles(closestPlant.x, closestPlant.y);
+            AudioSystem.playHarvestChime();
+            // Remove DOM element if exists
+            if (closestPlant.element) {
+                closestPlant.element.remove();
+            }
+            // Remove from array & relayout
+            plants = plants.filter(p => p !== closestPlant);
+            layoutPlants();
+            updateCoins(10); // reward
+            updateStatsDisplay();
+        });
+    }
 });
 
 // Calculate centered grid positions for all plants
@@ -963,7 +999,7 @@ function loop() {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += p.isSparkle ? 0.02 : 0.08; // lighter gravity for sparkles
+        p.vy += p.isSparkle ? 0.02 : 0.12; // gentle downward drift after burst
         p.life--;
 
         if (p.life <= 0) {
@@ -971,7 +1007,7 @@ function loop() {
             continue;
         }
 
-        const maxLife = p.isSparkle ? 40 : 80;
+        const maxLife = p.isSparkle ? 40 : 90;
         ctx.globalAlpha = p.life / maxLife;
 
         if (p.isSparkle) {
