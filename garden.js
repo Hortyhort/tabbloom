@@ -189,8 +189,30 @@ function layoutPlants() {
     });
 }
 
+// Calculate plant health based on time since last activity
+// Returns 0-1 where 0 is fresh/blooming and 1 is completely wilted
+function calculateHealthFromActivity(lastActiveTime) {
+    const now = Date.now();
+    const hoursSinceActive = (now - lastActiveTime) / (1000 * 60 * 60);
+
+    if (hoursSinceActive < 1) {
+        // < 1 hour: full bloom
+        return 0;
+    } else if (hoursSinceActive < 24) {
+        // 1-24 hours: gradual fade (0.1 to 0.5)
+        return 0.1 + (hoursSinceActive / 24) * 0.4;
+    } else if (hoursSinceActive < 72) {
+        // 24-72 hours: more wilted (0.5 to 0.7)
+        return 0.5 + ((hoursSinceActive - 24) / 48) * 0.2;
+    } else {
+        // 72+ hours: fully wilted (0.7 to 1.0)
+        const daysOver3 = (hoursSinceActive - 72) / 24;
+        return Math.min(1, 0.7 + daysOver3 * 0.1);
+    }
+}
+
 class Plant {
-    constructor(tab) {
+    constructor(tab, lastActiveTime) {
         this.tabId = tab.id;
         this.tab = tab; // Store full tab reference
         this.title = tab.title;
@@ -198,7 +220,8 @@ class Plant {
         this.x = 0;
         this.y = 0;
         this.element = null; // DOM element reference
-        this.age = Math.random(); // Placeholder for activity logic
+        this.lastActiveTime = lastActiveTime || Date.now();
+        this.age = calculateHealthFromActivity(this.lastActiveTime);
         this.sway = Math.random() * Math.PI * 2; // Random start phase
         this.swaySpeed = 0.02 + Math.random() * 0.02;
 
@@ -206,6 +229,11 @@ class Plant {
         this.spotOffsets = Array(6).fill(0).map(() => (Math.random() - 0.5) * 0.6);
         this.spotSizes = Array(6).fill(0).map(() => 0.8 + Math.random() * 0.5);
         this.stamenLengths = Array(6).fill(0).map(() => 6 + Math.random() * 2);
+    }
+
+    // Update health based on current time
+    updateHealth() {
+        this.age = calculateHealthFromActivity(this.lastActiveTime);
     }
 
     update() {
@@ -482,8 +510,15 @@ async function initGarden() {
     // Load saved coins
     await loadCoins();
 
+    // Load tab activity data
+    const activityResult = await chrome.storage.local.get(['tabActivity']);
+    const tabActivity = activityResult.tabActivity || {};
+
     const tabs = await chrome.tabs.query({});
-    plants = tabs.map(tab => new Plant(tab));
+    plants = tabs.map(tab => {
+        const lastActiveTime = tabActivity[tab.id] || Date.now();
+        return new Plant(tab, lastActiveTime);
+    });
     layoutPlants();
 
     // Create DOM overlay elements for each plant
@@ -497,8 +532,42 @@ async function initGarden() {
         harvestBtn.addEventListener('click', harvestDormantTabs);
     }
 
+    // Update plant health every 10 seconds
+    setInterval(updateAllPlantHealth, 10000);
+
+    // Initial stats display
+    updateStatsDisplay();
+
     // Start Game Loop
     requestAnimationFrame(loop);
+}
+
+// Periodically update all plant health based on activity
+async function updateAllPlantHealth() {
+    // Reload activity data in case it changed
+    const activityResult = await chrome.storage.local.get(['tabActivity']);
+    const tabActivity = activityResult.tabActivity || {};
+
+    plants.forEach(plant => {
+        // Update last active time if it changed
+        if (tabActivity[plant.tabId]) {
+            plant.lastActiveTime = tabActivity[plant.tabId];
+        }
+        plant.updateHealth();
+    });
+
+    // Update stats display
+    updateStatsDisplay();
+}
+
+// Update the stats text in footer
+function updateStatsDisplay() {
+    const statsText = document.querySelector('.stats-text');
+    if (statsText) {
+        const bloomingCount = plants.filter(p => p.age < 0.3).length;
+        const wiltedCount = plants.filter(p => p.age >= 0.7).length;
+        statsText.textContent = `${bloomingCount} blooming, ${wiltedCount} wilted of ${plants.length} tabs`;
+    }
 }
 
 // Harvest all wilted/dormant tabs
