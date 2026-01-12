@@ -174,7 +174,12 @@ class Plant {
         this.element = null; // DOM element reference
         this.age = Math.random(); // Placeholder for activity logic
         this.sway = Math.random() * Math.PI * 2; // Random start phase
-        this.swaySpeed = 0.004 + Math.random() * 0.004; // Gentle floating speed
+        this.swaySpeed = 0.02 + Math.random() * 0.02;
+
+        // Pre-generate random values for consistent rendering
+        this.spotOffsets = Array(6).fill(0).map(() => (Math.random() - 0.5) * 0.6);
+        this.spotSizes = Array(6).fill(0).map(() => 0.8 + Math.random() * 0.5);
+        this.stamenLengths = Array(6).fill(0).map(() => 6 + Math.random() * 2);
     }
 
     update() {
@@ -303,13 +308,13 @@ class Plant {
         // Draw back petals first (3 petals)
         for (let i = 0; i < 3; i++) {
             const angle = (i * Math.PI * 2 / 3) - Math.PI / 2;
-            this.drawLilyPetal(ctx, angle, petalLength, petalWidth, true);
+            this.drawLilyPetal(ctx, angle, petalLength, petalWidth, true, i);
         }
 
         // Draw front petals (3 petals, offset)
         for (let i = 0; i < 3; i++) {
             const angle = (i * Math.PI * 2 / 3) - Math.PI / 2 + Math.PI / 3;
-            this.drawLilyPetal(ctx, angle, petalLength * 0.95, petalWidth * 0.9, false);
+            this.drawLilyPetal(ctx, angle, petalLength * 0.95, petalWidth * 0.9, false, i + 3);
         }
 
         // Draw stamens
@@ -323,7 +328,7 @@ class Plant {
     }
 
     // Draw a single recurved lily petal with gradient and spots
-    drawLilyPetal(ctx, angle, length, width, isBack) {
+    drawLilyPetal(ctx, angle, length, width, isBack, petalIndex) {
         ctx.save();
         ctx.rotate(angle);
 
@@ -363,14 +368,14 @@ class Plant {
         ctx.lineWidth = 0.5;
         ctx.stroke();
 
-        // Add characteristic spots
+        // Add characteristic spots (using pre-generated values)
         if (!isBack) {
             ctx.fillStyle = 'rgba(180, 80, 100, 0.4)';
             for (let i = 0; i < 3; i++) {
                 const spotY = -length * (0.3 + i * 0.15);
-                const spotX = (Math.random() - 0.5) * width * 0.6;
+                const spotX = this.spotOffsets[petalIndex + i] * width;
                 ctx.beginPath();
-                ctx.arc(spotX, spotY, 0.8 + Math.random() * 0.5, 0, Math.PI * 2);
+                ctx.arc(spotX, spotY, this.spotSizes[petalIndex + i], 0, Math.PI * 2);
                 ctx.fill();
             }
         }
@@ -391,7 +396,7 @@ class Plant {
         const stamenCount = 6;
         for (let i = 0; i < stamenCount; i++) {
             const angle = (i * Math.PI * 2 / stamenCount) + Math.PI / 6;
-            const length = 6 + Math.random() * 2;
+            const length = this.stamenLengths[i]; // Use pre-generated length
 
             ctx.save();
             ctx.rotate(angle);
