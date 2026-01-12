@@ -1,4 +1,9 @@
+/* ============================================
+   TabBloom - Seasonal & Dark Mode Themes
+   ============================================ */
+
 :root {
+  /* Spring (default) */
   --primary-green: #4A7043;
   --soft-sage: #A8CABA;
   --bloom-pink: #FFB7C5;
@@ -6,7 +11,66 @@
   --text-main: #1d1d1f;
   --text-dim: #86868b;
   --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-border: rgba(0, 0, 0, 0.05);
+  --grid-color: #d8e8d8;
 }
+
+/* Summer theme */
+.season-summer {
+  --primary-green: #2D5A27;
+  --soft-sage: #8BC34A;
+  --bloom-pink: #FF9AA2;
+  --warm-beige: #FFFEF0;
+  --grid-color: #c5e1a5;
+}
+
+/* Autumn theme */
+.season-autumn {
+  --primary-green: #8B4513;
+  --soft-sage: #DEB887;
+  --bloom-pink: #FF8C42;
+  --warm-beige: #FFF4E6;
+  --grid-color: #edd9c0;
+}
+
+/* Winter theme */
+.season-winter {
+  --primary-green: #4A6FA5;
+  --soft-sage: #B8D4E3;
+  --bloom-pink: #E8D5E0;
+  --warm-beige: #F5F9FC;
+  --grid-color: #dce8f0;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --primary-green: #7CB97A;
+    --soft-sage: #3D5C37;
+    --bloom-pink: #FFB7C5;
+    --warm-beige: #1a1a1a;
+    --text-main: #f0f0f0;
+    --text-dim: #a0a0a0;
+    --glass-bg: rgba(40, 40, 40, 0.85);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --grid-color: #2a3a2a;
+  }
+
+  .pill.coins { background: #3d3520; color: #ffd166; }
+  .pill.season { background: #2a3d2a; color: var(--primary-green); }
+
+  .harvest-btn {
+    background-color: #5a8a54;
+  }
+
+  .harvest-btn:hover {
+    background-color: #4a7a44;
+  }
+}
+
+/* ============================================
+   Base Styles
+   ============================================ */
 
 body, html {
   margin: 0;
@@ -14,7 +78,9 @@ body, html {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background-color: var(--warm-beige);
+  color: var(--text-main);
   overflow: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .garden-container {
@@ -27,7 +93,7 @@ body, html {
   padding: 20px;
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
-  border-bottom: 1px solid rgba(0,0,0,0.05);
+  border-bottom: 1px solid var(--glass-border);
   z-index: 10;
 }
 
@@ -42,6 +108,7 @@ body, html {
   display: flex;
   gap: 8px;
   margin-top: 8px;
+  align-items: center;
 }
 
 .pill {
@@ -49,14 +116,29 @@ body, html {
   padding: 4px 10px;
   border-radius: 20px;
   font-weight: 600;
+  border: none;
 }
 
 .pill.coins { background: #fff5d1; color: #b78900; }
 .pill.season { background: #e2f4e3; color: var(--primary-green); }
 
+.share-btn {
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+  background: var(--bloom-pink);
+  color: white;
+  font-size: 14px;
+  padding: 4px 8px;
+}
+
+.share-btn:hover {
+  transform: scale(1.1);
+  background: #ff9eb0;
+}
+
 #garden-container {
-  background-image: radial-gradient(#d8e8d8 1px, transparent 1px);
-  background-size: 20px 20px; /* Subtle grass grid */
+  background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
 #garden-canvas {
@@ -76,13 +158,13 @@ body, html {
   z-index: 100;
 }
 
-.hidden { display: none; }
+.hidden { display: none !important; }
 
 .garden-footer {
   padding: 20px;
   background: var(--glass-bg);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(0,0,0,0.05);
+  border-top: 1px solid var(--glass-border);
   text-align: center;
 }
 
@@ -95,7 +177,7 @@ body, html {
   border-radius: 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), background-color 0.2s ease;
 }
 
 .harvest-btn:hover {
@@ -107,4 +189,106 @@ body, html {
   font-size: 11px;
   margin-top: 12px;
   color: var(--text-dim);
+}
+
+/* ============================================
+   Onboarding Overlay
+   ============================================ */
+
+.onboarding-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.onboarding-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 32px;
+  max-width: 300px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.onboarding-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.onboarding-card h2 {
+  margin: 0 0 8px 0;
+  color: var(--primary-green);
+  font-size: 22px;
+}
+
+.onboarding-card p {
+  margin: 0 0 20px 0;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.onboarding-tips {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 24px 0;
+  text-align: left;
+}
+
+.onboarding-tips li {
+  padding: 8px 0;
+  font-size: 13px;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.onboarding-tips span {
+  font-size: 16px;
+}
+
+.onboarding-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--primary-green), #5a8a54);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.2s ease;
+}
+
+.onboarding-btn:hover {
+  transform: scale(1.03);
+  box-shadow: 0 8px 20px rgba(74, 112, 67, 0.4);
 }

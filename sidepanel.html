@@ -5,7 +5,7 @@
   <link rel="stylesheet" href="sidepanel.css">
   <style>
     .plant {
-      image-rendering: pixelated; /* crisp pixels */
+      image-rendering: pixelated;
     }
   </style>
 </head>
@@ -17,10 +17,11 @@
         <div class="stats-pills">
           <span class="pill coins">✨ 120</span>
           <span class="pill season">Spring</span>
+          <button id="shareBtn" class="pill share-btn" title="Share your garden">📸</button>
         </div>
       </div>
     </header>
-    
+
     <div id="garden-container" style="
       flex: 1;
       display: flex;
@@ -35,9 +36,26 @@
 
     <footer class="garden-footer">
       <button id="harvestAll" class="harvest-btn">Harvest Dormant Tabs</button>
-      <p class="stats-text">47 tabs bloomed this week 🌱</p>
+      <p class="stats-text">47 tabs bloomed this week</p>
     </footer>
   </div>
+
+  <!-- Onboarding Overlay -->
+  <div id="onboarding" class="onboarding-overlay hidden">
+    <div class="onboarding-card">
+      <div class="onboarding-icon">🌱</div>
+      <h2>Welcome to TabBloom!</h2>
+      <p>Your browser tabs are now seeds in a digital garden.</p>
+      <ul class="onboarding-tips">
+        <li><span>🌸</span> Active tabs bloom beautifully</li>
+        <li><span>🍂</span> Neglected tabs slowly wilt</li>
+        <li><span>✨</span> Harvest wilted tabs to earn coins</li>
+        <li><span>📸</span> Share your garden with friends</li>
+      </ul>
+      <button id="onboardingClose" class="onboarding-btn">Start Growing</button>
+    </div>
+  </div>
+
   <script src="garden.js"></script>
 </body>
 </html>

@@ -163,6 +163,157 @@ async function loadCoins() {
     }
 }
 
+// ============================================
+// Seasonal Themes
+// ============================================
+function getCurrentSeason() {
+    const month = new Date().getMonth();
+    if (month >= 2 && month <= 4) return 'spring';
+    if (month >= 5 && month <= 7) return 'summer';
+    if (month >= 8 && month <= 10) return 'autumn';
+    return 'winter';
+}
+
+function applySeason() {
+    const season = getCurrentSeason();
+    const body = document.body;
+
+    // Remove existing season classes
+    body.classList.remove('season-spring', 'season-summer', 'season-autumn', 'season-winter');
+
+    // Apply current season (spring is default, no class needed)
+    if (season !== 'spring') {
+        body.classList.add(`season-${season}`);
+    }
+
+    // Update season pill
+    const seasonPill = document.querySelector('.pill.season');
+    if (seasonPill) {
+        const seasonNames = {
+            spring: 'Spring',
+            summer: 'Summer',
+            autumn: 'Autumn',
+            winter: 'Winter'
+        };
+        seasonPill.textContent = seasonNames[season];
+    }
+}
+
+// ============================================
+// Screenshot & Share Feature
+// ============================================
+async function captureGardenScreenshot() {
+    // Create a temporary canvas for the screenshot
+    const shareCanvas = document.createElement('canvas');
+    const shareCtx = shareCanvas.getContext('2d');
+
+    shareCanvas.width = canvas.width;
+    shareCanvas.height = canvas.height + 80; // Extra space for stats
+
+    // Fill background
+    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    shareCtx.fillStyle = isDark ? '#1a1a1a' : '#F9F5EB';
+    shareCtx.fillRect(0, 0, shareCanvas.width, shareCanvas.height);
+
+    // Draw the garden canvas
+    shareCtx.drawImage(canvas, 0, 0);
+
+    // Add stats overlay at bottom
+    const bloomingCount = plants.filter(p => p.age < 0.3).length;
+    const wiltedCount = plants.filter(p => p.age >= 0.7).length;
+
+    shareCtx.fillStyle = isDark ? 'rgba(40, 40, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)';
+    shareCtx.fillRect(0, canvas.height, shareCanvas.width, 80);
+
+    shareCtx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
+    shareCtx.fillStyle = isDark ? '#7CB97A' : '#4A7043';
+    shareCtx.textAlign = 'center';
+    shareCtx.fillText('TabBloom Garden', shareCanvas.width / 2, canvas.height + 30);
+
+    shareCtx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+    shareCtx.fillStyle = isDark ? '#a0a0a0' : '#86868b';
+    shareCtx.fillText(
+        `${plants.length} tabs | ${bloomingCount} blooming | ${wiltedCount} wilted | ${currentCoins} coins`,
+        shareCanvas.width / 2,
+        canvas.height + 55
+    );
+
+    // Convert to blob and copy/download
+    try {
+        const blob = await new Promise(resolve => shareCanvas.toBlob(resolve, 'image/png'));
+
+        // Try to copy to clipboard first
+        if (navigator.clipboard && navigator.clipboard.write) {
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+            showShareFeedback('Copied to clipboard!');
+        } else {
+            // Fallback: download the image
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tabbloom-garden-${Date.now()}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showShareFeedback('Downloaded!');
+        }
+
+        AudioSystem.playHarvestChime();
+    } catch (err) {
+        console.error('Failed to share:', err);
+        showShareFeedback('Share failed');
+    }
+}
+
+function showShareFeedback(message) {
+    const btn = document.getElementById('shareBtn');
+    const originalText = btn.textContent;
+    btn.textContent = message;
+    btn.style.fontSize = '10px';
+
+    setTimeout(() => {
+        btn.textContent = originalText;
+        btn.style.fontSize = '';
+    }, 2000);
+}
+
+// ============================================
+// Onboarding (First-time Experience)
+// ============================================
+async function checkOnboarding() {
+    const result = await chrome.storage.local.get(['hasSeenOnboarding']);
+
+    if (!result.hasSeenOnboarding) {
+        showOnboarding();
+    }
+}
+
+function showOnboarding() {
+    const overlay = document.getElementById('onboarding');
+    if (overlay) {
+        overlay.classList.remove('hidden');
+    }
+}
+
+function hideOnboarding() {
+    const overlay = document.getElementById('onboarding');
+    if (overlay) {
+        overlay.classList.add('hidden');
+    }
+    chrome.storage.local.set({ hasSeenOnboarding: true });
+}
+
+function setupOnboarding() {
+    const closeBtn = document.getElementById('onboardingClose');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
+            hideOnboarding();
+            AudioSystem.playGrowthRustle();
+        });
+    }
+}
+
 // Configuration
 const COLORS = {
     petalPink: '#FFB7C5',
@@ -680,6 +831,9 @@ class Plant {
 }
 
 async function initGarden() {
+    // Apply seasonal theme
+    applySeason();
+
     // Load saved coins
     await loadCoins();
 
@@ -704,6 +858,16 @@ async function initGarden() {
     if (harvestBtn) {
         harvestBtn.addEventListener('click', harvestDormantTabs);
     }
+
+    // Set up Share button
+    const shareBtn = document.getElementById('shareBtn');
+    if (shareBtn) {
+        shareBtn.addEventListener('click', captureGardenScreenshot);
+    }
+
+    // Set up onboarding
+    setupOnboarding();
+    await checkOnboarding();
 
     // Update plant health every 10 seconds
     setInterval(updateAllPlantHealth, 10000);
