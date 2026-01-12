@@ -349,6 +349,9 @@ function createPlantElement(tab, x, y) {
 
     plant.addEventListener('mouseenter', () => {
         AudioSystem.playHoverSoft();
+        // Apply hover animation explicitly
+        plant.style.animation = 'strongPulse 1.2s infinite alternate ease-in-out';
+        plant.style.transform = 'scale(1.35) rotate(6deg) translateY(-10px)';
         // Show tooltip
         tooltip.style.left = `${x + 15}px`;
         tooltip.style.top = `${y - 60}px`;
@@ -357,6 +360,9 @@ function createPlantElement(tab, x, y) {
     });
 
     plant.addEventListener('mouseleave', () => {
+        plant.style.animation = 'none';
+        plant.style.transform = 'scale(1) rotate(0deg) translateY(0)';
+        plant.style.filter = 'none';
         tooltip.classList.add('hidden');
     });
 
