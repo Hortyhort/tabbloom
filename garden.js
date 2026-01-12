@@ -340,21 +340,17 @@ const SCALE = 1.4;
 function createPlantElement(tab, x, y) {
     const plant = document.createElement('div');
     plant.className = 'plant';
-    plant.style.position = 'absolute';
     plant.style.left = `${x - PLANT_SIZE / 2}px`;
     plant.style.top = `${y - PLANT_HEIGHT / 2}px`;
     plant.style.width = `${PLANT_SIZE}px`;
     plant.style.height = `${PLANT_HEIGHT}px`;
-    plant.style.background = 'transparent'; // Canvas draws the visual
-    plant.style.transition = 'transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s ease-out';
-    plant.style.cursor = 'pointer';
     plant.style.zIndex = '10';
     plant.style.transformOrigin = 'center bottom';
 
     plant.addEventListener('mouseenter', () => {
-        plant.style.transform = 'scale(1.12) rotate(2deg) translateY(-3px)';
-        plant.style.filter = 'drop-shadow(0 0 15px rgba(255, 183, 197, 0.6)) brightness(1.1)';
         AudioSystem.playHoverSoft();
+        // Add pulse glow animation
+        plant.style.animation = 'pulseGlow 1.5s infinite alternate';
         // Show tooltip
         tooltip.style.left = `${x + 15}px`;
         tooltip.style.top = `${y - 60}px`;
@@ -363,8 +359,7 @@ function createPlantElement(tab, x, y) {
     });
 
     plant.addEventListener('mouseleave', () => {
-        plant.style.transform = 'scale(1) rotate(0deg) translateY(0)';
-        plant.style.filter = 'none';
+        plant.style.animation = 'none';
         tooltip.classList.add('hidden');
     });
 

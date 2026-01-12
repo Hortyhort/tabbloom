@@ -15,6 +15,11 @@
       transform: scale(1.18) rotate(3deg) translateY(-6px);
       filter: drop-shadow(0 8px 16px rgba(74,112,67,0.3)) brightness(1.15);
     }
+
+    @keyframes pulseGlow {
+      from { filter: drop-shadow(0 0 8px rgba(255,183,197,0.4)); }
+      to   { filter: drop-shadow(0 0 16px rgba(255,183,197,0.8)); }
+    }
   </style>
 </head>
 <body>
