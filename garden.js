@@ -349,8 +349,6 @@ function createPlantElement(tab, x, y) {
 
     plant.addEventListener('mouseenter', () => {
         AudioSystem.playHoverSoft();
-        // Add pulse glow animation
-        plant.style.animation = 'pulseGlow 1.5s infinite alternate';
         // Show tooltip
         tooltip.style.left = `${x + 15}px`;
         tooltip.style.top = `${y - 60}px`;
@@ -359,7 +357,6 @@ function createPlantElement(tab, x, y) {
     });
 
     plant.addEventListener('mouseleave', () => {
-        plant.style.animation = 'none';
         tooltip.classList.add('hidden');
     });
 
