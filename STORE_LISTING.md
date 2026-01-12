@@ -8,9 +8,9 @@ Turn your browser tabs into a living garden. Watch flowers bloom, wilt, and grow
 
 ## Detailed Description
 
-**Transform your tab chaos into a serene digital sanctuary.**
+**TabBloom turns your browser tabs into a living, breathing digital garden that blooms with your attention and gently wilts when neglected. Nurture your sanctuary with seasonal magic, ASMR sounds, butterflies, and lifetime stats.**
 
-TabBloom turns every browser tab into a beautiful oriental lily in your personal garden. Active tabs bloom vibrantly, while neglected ones slowly wilt — giving you a gentle, visual reminder to tend to your browsing.
+Every tab becomes a beautiful oriental lily. Active tabs bloom vibrantly, while neglected ones slowly wilt — giving you a gentle, visual reminder to tend to your browsing. No judgment, just nurturing.
 
 ### Features
 
@@ -68,23 +68,33 @@ English
 # Icon Guidelines
 
 ## Design Concept
-A blooming oriental lily emerging from a browser tab, with warm sunset gradient background.
+A browser tab shape with a blooming flower emerging from it, set against a warm sunset gradient.
 
 ## Color Palette
-- Primary: #5D7A4A (warm green)
-- Accent: #FFB7C5 (soft pink petals)
-- Background gradient: #7BA4D4 → #F8C9A8 → #FFE4D6 (sunset)
+- **Flower center**: Sunset gradient (pink → orange → yellow)
+- **Petals**: #FFB7C5 (soft pink) fading to #FFCBA4 (peach)
+- **Stem/leaves**: #5D7A4A (warm green)
+- **Tab shape**: White or light cream with subtle shadow
+- **Background**: Warm sunset gradient (#FFE4D6 → #F8C9A8 → #FFD89B)
 
 ## Icon Sizes Needed
-- 16x16 px (toolbar)
-- 48x48 px (extensions page)
-- 128x128 px (store listing)
+- 16x16 px (toolbar) - simplified, recognizable silhouette
+- 48x48 px (extensions page) - clear detail
+- 128x128 px (store listing) - full detail with gradient
 
 ## Icon Elements
-1. Simplified lily flower (3-4 petals visible)
-2. Small tab/window shape as the "pot" or base
-3. Subtle sparkle or glow effect
-4. Rounded corners for friendly feel
+1. **Tab shape** as the base/container (rounded rectangle, browser tab silhouette)
+2. **Blooming lily** growing up from the tab (3-4 petals)
+3. **Green stem** connecting flower to tab
+4. **Sunset gradient glow** radiating from flower center
+5. Subtle sparkle or warmth effect
+6. Rounded corners for friendly, cozy feel
+
+## Icon Style Notes
+- Should feel warm, inviting, and slightly magical
+- Pixel-perfect at 16x16 while still recognizable
+- The tab shape grounds it as a "browser extension"
+- The flower represents growth and nurturing
 
 ---
 
