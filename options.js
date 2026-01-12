@@ -50,10 +50,10 @@ function cacheElements() {
     elements.saveStatus = document.getElementById('saveStatus');
 }
 
-// Load settings from storage
+// Load settings from storage (sync for cross-device persistence)
 async function loadSettings() {
     try {
-        const result = await chrome.storage.local.get(['tabbloomSettings']);
+        const result = await chrome.storage.sync.get(['tabbloomSettings']);
         if (result.tabbloomSettings) {
             settings = { ...defaultSettings, ...result.tabbloomSettings };
         }
@@ -62,10 +62,10 @@ async function loadSettings() {
     }
 }
 
-// Save settings to storage
+// Save settings to storage (sync for cross-device persistence)
 async function saveSettings() {
     try {
-        await chrome.storage.local.set({ tabbloomSettings: settings });
+        await chrome.storage.sync.set({ tabbloomSettings: settings });
         showSaveStatus();
     } catch (err) {
         console.error('Failed to save settings:', err);

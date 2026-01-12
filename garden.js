@@ -1848,10 +1848,10 @@ function setupTabListeners() {
     });
 }
 
-// Load user settings from storage
+// Load user settings from storage (sync for cross-device persistence)
 async function loadGardenSettings() {
     try {
-        const result = await chrome.storage.local.get(['tabbloomSettings']);
+        const result = await chrome.storage.sync.get(['tabbloomSettings']);
         if (result.tabbloomSettings) {
             gardenSettings = { ...gardenSettings, ...result.tabbloomSettings };
         }
