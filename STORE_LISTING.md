@@ -8,7 +8,9 @@ Turn your browser tabs into a living garden. Watch flowers bloom, wilt, and grow
 
 ## Detailed Description
 
-**TabBloom turns your browser tabs into a living, breathing digital garden that blooms with your attention and gently wilts when neglected. Nurture your sanctuary with seasonal magic, ASMR sounds, butterflies, and lifetime stats.**
+**TabBloom – Your personal digital garden that grows with your attention, blooms with care, and changes with the seasons. Cozy, calming, and surprisingly productive.**
+
+TabBloom turns your browser tabs into a living, breathing sanctuary that blooms when you visit and gently wilts when neglected. Nurture your garden with seasonal magic, ASMR sounds, butterflies, and lifetime stats.
 
 Every tab becomes a beautiful oriental lily. Active tabs bloom vibrantly, while neglected ones slowly wilt — giving you a gentle, visual reminder to tend to your browsing. No judgment, just nurturing.
 

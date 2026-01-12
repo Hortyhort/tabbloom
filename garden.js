@@ -27,6 +27,7 @@ let gardenSettings = {
     confettiEnabled: true,
     blurTitles: false,
     // Performance settings
+    minimalMode: false,
     performanceMode: 'full',
     maxVisiblePlants: 50,
     targetFps: 60
@@ -532,9 +533,9 @@ const AudioSystem = {
         if (this.ctx.state === 'suspended') this.ctx.resume();
     },
 
-    // Check if sounds are enabled
+    // Check if sounds are enabled (disabled in minimal mode)
     isEnabled() {
-        return gardenSettings.soundEnabled;
+        return gardenSettings.soundEnabled && !gardenSettings.minimalMode;
     },
 
     // Get current volume multiplier (0-1)
@@ -1452,6 +1453,13 @@ const FLOWER_TYPES = {
         petalCount: 4,
         petalShape: 'cup',
         colors: { bloom: '#9B59B6', accent: '#8E44AD', center: '#F1C40F' }
+    },
+    nightbloom: {
+        name: 'nightbloom',
+        petalCount: 7,
+        petalShape: 'curved',
+        colors: { bloom: '#2C1654', accent: '#1A0A30', center: '#9B59B6' },
+        glows: true // Special property for dark mode glow effect
     }
 };
 
@@ -1475,6 +1483,10 @@ function getFlowerTypeForUrl(url) {
         // Entertainment → Tulip (colorful, fun)
         if (/youtube|netflix|spotify|twitch|hulu|disney/i.test(hostname)) {
             return FLOWER_TYPES.tulip;
+        }
+        // Knowledge/Research → Night Bloom (mysterious, glowing)
+        if (/wikipedia|stackoverflow|archive|wayback|library|research|academic|scholar|arxiv|jstor|edu\./i.test(hostname)) {
+            return FLOWER_TYPES.nightbloom;
         }
         // Default → Daisy (simple, versatile)
         return FLOWER_TYPES.daisy;
@@ -1532,6 +1544,11 @@ class Plant {
         if (newAge < this.previousAge - 0.1) {
             this.triggerGrowthAnimation();
             AudioSystem.playGrowthRustle();
+
+            // Track "saved from wilting" - tab was at risk (>50% wilted) and recovered
+            if (this.previousAge >= 0.5) {
+                recordTabSaved();
+            }
         }
 
         // Check for wilting transition
@@ -2192,9 +2209,12 @@ function loop(timestamp) {
     lastFrameTime = timestamp;
 
     frameCount++;
+
+    // Minimal mode: skip all decorative effects
+    const isMinimal = gardenSettings.minimalMode;
     const perfMode = gardenSettings.performanceMode;
-    const showParticles = perfMode === 'full' || perfMode === 'balanced';
-    const showButterflies = perfMode === 'full';
+    const showParticles = !isMinimal && (perfMode === 'full' || perfMode === 'balanced');
+    const showButterflies = !isMinimal && perfMode === 'full';
 
     // Draw beautiful background (sunset gradient, light pools, vignette)
     drawBackground();
@@ -2494,7 +2514,8 @@ let gardenStats = {
     seasonVisits: { spring: 0, summer: 0, autumn: 0, winter: 0 },
     longestStreak: 0,
     currentStreak: 0,
-    lastVisit: Date.now()
+    lastVisit: Date.now(),
+    tabsSavedFromWilting: 0
 };
 
 async function loadGardenStats() {
@@ -2530,6 +2551,11 @@ function saveGardenStats() {
 function recordHarvest(count = 1, coins = 10) {
     gardenStats.totalHarvested += count;
     gardenStats.coinsEarned += coins;
+    saveGardenStats();
+}
+
+function recordTabSaved() {
+    gardenStats.tabsSavedFromWilting = (gardenStats.tabsSavedFromWilting || 0) + 1;
     saveGardenStats();
 }
 
@@ -2594,11 +2620,11 @@ function showGardenStats() {
     statsGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px;';
 
     const statItems = [
+        { label: 'Tabs Saved', value: gardenStats.tabsSavedFromWilting || 0, emoji: '💚' },
         { label: 'Harvested', value: gardenStats.totalHarvested, emoji: '🌾' },
         { label: 'Coins Earned', value: gardenStats.coinsEarned, emoji: '✨' },
         { label: 'Garden Age', value: getGardenAge(), emoji: '🌱' },
         { label: 'Day Streak', value: `${gardenStats.currentStreak} days`, emoji: '🔥' },
-        { label: 'Best Streak', value: `${gardenStats.longestStreak} days`, emoji: '🏆' },
         { label: 'Favorite Season', value: `${seasonEmojis[favSeason]} ${seasonNames[favSeason]}`, emoji: '' },
     ];
 

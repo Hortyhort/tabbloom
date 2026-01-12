@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabBloom",
-  "version": "1.0.27",
+  "version": "1.0.28",
   "description": "Turn your tabs into a thriving digital garden — watch them bloom or wilt based on your browsing habits.",
   "icons": {
     "16": "icons/icon16.png",

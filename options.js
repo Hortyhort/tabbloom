@@ -16,6 +16,7 @@ const defaultSettings = {
     confettiEnabled: true,
     blurTitles: false,
     // Performance settings
+    minimalMode: false,
     performanceMode: 'full',
     maxVisiblePlants: 50,
     targetFps: 60
@@ -53,6 +54,7 @@ function cacheElements() {
     elements.exportData = document.getElementById('exportData');
     elements.saveStatus = document.getElementById('saveStatus');
     // Performance elements
+    elements.minimalMode = document.getElementById('minimalMode');
     elements.performanceMode = document.getElementById('performanceMode');
     elements.maxVisiblePlants = document.getElementById('maxVisiblePlants');
     elements.targetFps = document.getElementById('targetFps');
@@ -103,6 +105,7 @@ function updateUI() {
     elements.confettiEnabled.checked = settings.confettiEnabled;
     elements.blurTitles.checked = settings.blurTitles;
     // Performance settings
+    elements.minimalMode.checked = settings.minimalMode;
     elements.performanceMode.value = settings.performanceMode;
     elements.maxVisiblePlants.value = settings.maxVisiblePlants;
     elements.targetFps.value = settings.targetFps;
@@ -169,6 +172,11 @@ function bindEvents() {
     });
 
     // Performance settings
+    elements.minimalMode.addEventListener('change', (e) => {
+        settings.minimalMode = e.target.checked;
+        saveSettings();
+    });
+
     elements.performanceMode.addEventListener('change', (e) => {
         settings.performanceMode = e.target.value;
         saveSettings();
