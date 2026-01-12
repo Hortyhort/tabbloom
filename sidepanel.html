@@ -46,15 +46,24 @@
       }
     }
 
-    /* Organic breathing idle sway for all plants */
-    .plant {
-      animation: idleSway 8s ease-in-out infinite;
-      animation-delay: var(--sway-delay, 0s);
+    /* Gentle breathing animation - up/down bob with slight rotation */
+    @keyframes gentleBreathe {
+      0%, 100% { transform: translateY(0) rotate(0deg); }
+      50%      { transform: translateY(-3px) rotate(0.8deg); }
     }
 
-    @keyframes idleSway {
-      0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
-      50%      { transform: translateX(3px) translateY(-2px) rotate(1deg); }
+    /* Subtle left-right sway */
+    @keyframes gentleSway {
+      0%, 100% { transform: translateX(0); }
+      50%      { transform: translateX(2px); }
+    }
+
+    /* Combined breathing animation - the garden breathes as one */
+    .plant {
+      animation:
+        gentleBreathe 10s infinite ease-in-out,
+        gentleSway 14s infinite ease-in-out;
+      animation-delay: calc(var(--plant-index, 0) * 0.3s);
     }
 
     .plant:hover {

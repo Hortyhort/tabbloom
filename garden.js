@@ -1095,8 +1095,8 @@ function createPlantElement(tab, x, y, plantIndex = 0) {
     plant.style.zIndex = '10';
     plant.style.transformOrigin = 'center bottom';
 
-    // Add random sway delay for organic feel
-    plant.style.setProperty('--sway-delay', `${Math.random() * 4}s`);
+    // Set plant index for staggered breathing animation
+    plant.style.setProperty('--plant-index', plantIndex);
 
     plant.addEventListener('mouseenter', () => {
         AudioSystem.playHoverSoft();
@@ -1113,7 +1113,8 @@ function createPlantElement(tab, x, y, plantIndex = 0) {
     });
 
     plant.addEventListener('mouseleave', () => {
-        plant.style.animation = 'idleSway 8s ease-in-out infinite';
+        // Restore gentle breathing animation
+        plant.style.animation = 'gentleBreathe 10s infinite ease-in-out, gentleSway 14s infinite ease-in-out';
         plant.style.transform = '';
         plant.style.filter = '';
         plant.style.zIndex = '10';
@@ -1709,7 +1710,7 @@ function setupTabListeners() {
         const newPlant = new Plant(tab, Date.now());
         plants.push(newPlant);
         layoutPlants();
-        newPlant.element = createPlantElement(tab, newPlant.x, newPlant.y);
+        newPlant.element = createPlantElement(tab, newPlant.x, newPlant.y, plants.length - 1);
         updateStatsDisplay();
 
         // Play a soft growth sound
@@ -1779,9 +1780,9 @@ async function initGarden() {
     });
     layoutPlants();
 
-    // Create DOM overlay elements for each plant
-    plants.forEach(plant => {
-        plant.element = createPlantElement(plant.tab, plant.x, plant.y);
+    // Create DOM overlay elements for each plant with staggered animation
+    plants.forEach((plant, index) => {
+        plant.element = createPlantElement(plant.tab, plant.x, plant.y, index);
     });
 
     // Set up Harvest Dormant Tabs button
