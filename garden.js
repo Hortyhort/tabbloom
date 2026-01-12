@@ -533,6 +533,43 @@ const AudioSystem = {
         osc2.stop(this.ctx.currentTime + 0.3);
     },
 
+    // Happy celebration chime for batch harvest
+    playHarvestAllCelebration() {
+        this.ensureContext();
+
+        // Ascending happy arpeggio (C-E-G-C)
+        const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
+        notes.forEach((freq, i) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+
+            osc.type = 'sine';
+            const startTime = this.ctx.currentTime + i * 0.08;
+            osc.frequency.setValueAtTime(freq, startTime);
+
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.12, startTime + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
+
+            osc.start(startTime);
+            osc.stop(startTime + 0.3);
+        });
+
+        // Add sparkle overlay
+        const sparkle = this.ctx.createOscillator();
+        const sparkleGain = this.ctx.createGain();
+        sparkle.connect(sparkleGain);
+        sparkleGain.connect(this.ctx.destination);
+        sparkle.type = 'sine';
+        sparkle.frequency.setValueAtTime(2093, this.ctx.currentTime + 0.3); // C7
+        sparkleGain.gain.setValueAtTime(0.04, this.ctx.currentTime + 0.3);
+        sparkleGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.6);
+        sparkle.start(this.ctx.currentTime + 0.3);
+        sparkle.stop(this.ctx.currentTime + 0.6);
+    },
+
     // Soft rustle on growth/refresh
     playGrowthRustle() {
         this.ensureContext();
@@ -1911,6 +1948,21 @@ async function harvestDormantTabs() {
 
     // Update stats
     updateStatsDisplay();
+
+    // Celebration time! Confetti + happy chime
+    if (harvestedCount > 0) {
+        AudioSystem.playHarvestAllCelebration();
+
+        // Trigger confetti burst (garden colors)
+        if (typeof confetti === 'function') {
+            confetti({
+                particleCount: 80 + harvestedCount * 10,
+                spread: 70,
+                origin: { y: 0.6 },
+                colors: ['#FFB7C5', '#FFD166', '#A8CABA', '#5D7A4A', '#98BF6A']
+            });
+        }
+    }
 
     console.log(`Harvested ${harvestedCount} dormant tabs!`);
 }
