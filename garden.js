@@ -7,6 +7,27 @@ let plants = [];
 let particles = [];
 let width, height;
 let hoveredPlant = null;
+let currentCoins = 120; // Starting coins
+
+// Update coin display
+function updateCoins(amount) {
+    currentCoins += amount;
+    const coinDisplay = document.querySelector('.pill.coins');
+    if (coinDisplay) {
+        coinDisplay.textContent = `✨ ${currentCoins}`;
+    }
+    // Save to storage
+    chrome.storage.local.set({ coins: currentCoins });
+}
+
+// Load coins from storage
+async function loadCoins() {
+    const result = await chrome.storage.local.get(['coins']);
+    if (result.coins !== undefined) {
+        currentCoins = result.coins;
+        updateCoins(0); // Refresh display
+    }
+}
 
 // Configuration
 const COLORS = {
@@ -60,14 +81,19 @@ function createPlantElement(tab, x, y) {
         tooltip.classList.add('hidden');
     });
 
-    plant.addEventListener('click', () => {
-        console.log('Harvesting tab:', tab.title);
-        bloomParticles(x, y);
-        chrome.tabs.remove(tab.id);
-        plant.remove();
-        // Remove from plants array
-        plants = plants.filter(p => p.tabId !== tab.id);
-        layoutPlants();
+    plant.addEventListener('click', async () => {
+        try {
+            console.log('Harvesting tab:', tab.title);
+            await chrome.tabs.remove(tab.id);
+            bloomParticles(x, y);
+            plant.remove();
+            // Remove from plants array
+            plants = plants.filter(p => p.tabId !== tab.id);
+            layoutPlants();
+            updateCoins(10); // Reward for harvesting
+        } catch (err) {
+            console.error("Failed to close tab:", err);
+        }
     });
 
     document.getElementById('garden-container').appendChild(plant);
@@ -453,6 +479,9 @@ class Plant {
 }
 
 async function initGarden() {
+    // Load saved coins
+    await loadCoins();
+
     const tabs = await chrome.tabs.query({});
     plants = tabs.map(tab => new Plant(tab));
     layoutPlants();
@@ -462,8 +491,48 @@ async function initGarden() {
         plant.element = createPlantElement(plant.tab, plant.x, plant.y);
     });
 
+    // Set up Harvest Dormant Tabs button
+    const harvestBtn = document.getElementById('harvestAll');
+    if (harvestBtn) {
+        harvestBtn.addEventListener('click', harvestDormantTabs);
+    }
+
     // Start Game Loop
     requestAnimationFrame(loop);
+}
+
+// Harvest all wilted/dormant tabs
+async function harvestDormantTabs() {
+    const dormantPlants = plants.filter(p => p.age >= 0.7);
+
+    if (dormantPlants.length === 0) {
+        console.log('No dormant tabs to harvest');
+        return;
+    }
+
+    let harvestedCount = 0;
+
+    for (const plant of dormantPlants) {
+        try {
+            await chrome.tabs.remove(plant.tabId);
+            bloomParticles(plant.x, plant.y);
+            if (plant.element) {
+                plant.element.remove();
+            }
+            harvestedCount++;
+        } catch (err) {
+            console.error("Failed to close tab:", err);
+        }
+    }
+
+    // Remove harvested plants from array
+    plants = plants.filter(p => p.age < 0.7);
+    layoutPlants();
+
+    // Award coins for batch harvest (bonus for efficiency!)
+    updateCoins(harvestedCount * 15);
+
+    console.log(`Harvested ${harvestedCount} dormant tabs!`);
 }
 
 function loop() {
