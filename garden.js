@@ -10,16 +10,24 @@ let hoveredPlant = null;
 
 // Configuration
 const COLORS = {
-    blooming: '#FFB7C5',
-    healthy: '#4A7043',
-    wilted: '#D2B48C',
+    petalPink: '#FFB7C5',
+    petalWhite: '#FFF5F7',
+    petalDeep: '#E891A5',
+    stamen: '#8B4513',
+    anther: '#CD853F',
+    stem: '#4A7043',
+    stemDark: '#3D5C37',
+    leaf: '#5C8A4D',
+    leafDark: '#4A7043',
+    wilted: '#C4A574',
+    wiltedPetal: '#D4C4A8',
     text: '#1d1d1f'
 };
 
 // Grid layout settings - larger plants with more breathing room
-const PLANT_SIZE = 80;
-const PLANT_HEIGHT = 100;
-const SPACING = 100;
+const PLANT_SIZE = 90;
+const PLANT_HEIGHT = 130;
+const SPACING = 130;
 const SCALE = 1.8;
 
 // Create interactive DOM element overlay for a plant
@@ -76,7 +84,7 @@ function bloomParticles(x, y) {
             vy: Math.random() * -6 - 3,
             life: 80,
             size: 4 + Math.random() * 6,
-            color: ['#FFB7C5', '#FFD166', '#A8CABA', '#4A7043'][Math.floor(Math.random() * 4)]
+            color: [COLORS.petalPink, COLORS.petalWhite, COLORS.anther, COLORS.leaf][Math.floor(Math.random() * 4)]
         });
     }
 }
@@ -174,48 +182,45 @@ class Plant {
     }
 
     draw() {
-        const swayOffset = Math.sin(this.sway) * 5;
+        const swayOffset = Math.sin(this.sway) * 3;
         const isHovered = this === hoveredPlant;
+        const isWilted = this.age >= 0.7;
 
         ctx.save();
         ctx.translate(this.x, this.y);
 
         // Apply hover effects
         if (isHovered) {
-            ctx.scale(SCALE * 1.15, SCALE * 1.15); // Scale up when hovered
-            ctx.shadowColor = 'rgba(255, 183, 197, 0.8)';
-            ctx.shadowBlur = 12;
+            ctx.scale(SCALE * 1.15, SCALE * 1.15);
+            ctx.shadowColor = 'rgba(255, 183, 197, 0.6)';
+            ctx.shadowBlur = 15;
         } else {
-            ctx.scale(SCALE, SCALE); // Normal scale
+            ctx.scale(SCALE, SCALE);
         }
 
-        // Draw Stem
-        ctx.strokeStyle = COLORS.healthy;
-        ctx.lineWidth = 3;
+        // Draw elegant curved stem
+        ctx.strokeStyle = COLORS.stem;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
         ctx.beginPath();
-        ctx.moveTo(0, 20);
-        ctx.quadraticCurveTo(swayOffset, 10, swayOffset, 0);
+        ctx.moveTo(0, 35);
+        ctx.quadraticCurveTo(swayOffset * 0.5, 20, swayOffset, 5);
         ctx.stroke();
 
-        // Draw Bloom based on "health"
-        if (this.age < 0.7) {
-            // Healthy Bloom
-            ctx.fillStyle = COLORS.blooming;
-            ctx.beginPath();
-            ctx.arc(swayOffset, -5, 12, 0, Math.PI * 2); // Larger bloom
-            ctx.fill();
+        // Draw leaves on stem
+        this.drawLeaf(ctx, swayOffset * 0.3, 25, -0.4, 8);
+        this.drawLeaf(ctx, swayOffset * 0.5, 18, 0.5, 7);
 
-            // Center
-            ctx.fillStyle = '#FFD166';
-            ctx.beginPath();
-            ctx.arc(swayOffset, -5, 5, 0, Math.PI * 2); // Larger center
-            ctx.fill();
+        // Position flower head
+        ctx.translate(swayOffset, isWilted ? 8 : 0);
+
+        if (isWilted) {
+            // Wilted lily - drooping petals
+            ctx.rotate(0.3);
+            this.drawWiltedLily(ctx);
         } else {
-            // Wilted
-            ctx.fillStyle = COLORS.wilted;
-            ctx.beginPath();
-            ctx.ellipse(swayOffset, 5, 8, 14, Math.PI / 4, 0, Math.PI * 2);
-            ctx.fill();
+            // Beautiful blooming oriental lily
+            this.drawOrientalLily(ctx);
         }
 
         ctx.restore();
@@ -230,11 +235,11 @@ class Plant {
             ctx.shadowOffsetY = 1;
             const fontSize = Math.min(16, canvas.width / 30); // scales with panel width
             ctx.font = `${fontSize}px system-ui, sans-serif`;
-            ctx.fillStyle = COLORS.healthy;
+            ctx.fillStyle = COLORS.stem;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
-            const textY = this.y + 50;
+            const textY = this.y + 75;
             const maxWidth = 90;
 
             // Wrap to two lines if too long
@@ -262,6 +267,183 @@ class Plant {
         } catch (e) {
             // Skip text for invalid URLs
         }
+    }
+
+    // Draw a single elegant lily leaf
+    drawLeaf(ctx, x, y, angle, size) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+
+        // Leaf shape
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(size * 0.3, -size * 0.4, size, -size * 0.1);
+        ctx.quadraticCurveTo(size * 0.3, size * 0.2, 0, 0);
+        ctx.fillStyle = COLORS.leaf;
+        ctx.fill();
+
+        // Leaf vein
+        ctx.strokeStyle = COLORS.leafDark;
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(size * 0.3, -size * 0.1, size * 0.8, -size * 0.05);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // Draw the beautiful oriental lily bloom
+    drawOrientalLily(ctx) {
+        const petalCount = 6;
+        const petalLength = 14;
+        const petalWidth = 5;
+
+        // Draw back petals first (3 petals)
+        for (let i = 0; i < 3; i++) {
+            const angle = (i * Math.PI * 2 / 3) - Math.PI / 2;
+            this.drawLilyPetal(ctx, angle, petalLength, petalWidth, true);
+        }
+
+        // Draw front petals (3 petals, offset)
+        for (let i = 0; i < 3; i++) {
+            const angle = (i * Math.PI * 2 / 3) - Math.PI / 2 + Math.PI / 3;
+            this.drawLilyPetal(ctx, angle, petalLength * 0.95, petalWidth * 0.9, false);
+        }
+
+        // Draw stamens
+        this.drawStamens(ctx);
+
+        // Draw center pistil
+        ctx.fillStyle = COLORS.stem;
+        ctx.beginPath();
+        ctx.arc(0, -2, 2, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Draw a single recurved lily petal with gradient and spots
+    drawLilyPetal(ctx, angle, length, width, isBack) {
+        ctx.save();
+        ctx.rotate(angle);
+
+        // Create petal gradient
+        const gradient = ctx.createLinearGradient(0, 0, 0, -length);
+        gradient.addColorStop(0, COLORS.petalDeep);
+        gradient.addColorStop(0.3, COLORS.petalPink);
+        gradient.addColorStop(0.7, COLORS.petalWhite);
+        gradient.addColorStop(1, isBack ? COLORS.petalPink : COLORS.petalWhite);
+
+        // Draw recurved petal shape
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+
+        // Left edge with elegant curve
+        ctx.bezierCurveTo(
+            -width * 0.8, -length * 0.3,
+            -width * 1.2, -length * 0.7,
+            -width * 0.3, -length
+        );
+
+        // Petal tip curves back (recurved)
+        ctx.quadraticCurveTo(0, -length * 1.1, width * 0.3, -length);
+
+        // Right edge
+        ctx.bezierCurveTo(
+            width * 1.2, -length * 0.7,
+            width * 0.8, -length * 0.3,
+            0, 0
+        );
+
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        // Petal outline for definition
+        ctx.strokeStyle = 'rgba(233, 145, 165, 0.3)';
+        ctx.lineWidth = 0.5;
+        ctx.stroke();
+
+        // Add characteristic spots
+        if (!isBack) {
+            ctx.fillStyle = 'rgba(180, 80, 100, 0.4)';
+            for (let i = 0; i < 3; i++) {
+                const spotY = -length * (0.3 + i * 0.15);
+                const spotX = (Math.random() - 0.5) * width * 0.6;
+                ctx.beginPath();
+                ctx.arc(spotX, spotY, 0.8 + Math.random() * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Center vein
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -2);
+        ctx.quadraticCurveTo(0, -length * 0.6, 0, -length * 0.85);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // Draw stamens with anthers
+    drawStamens(ctx) {
+        const stamenCount = 6;
+        for (let i = 0; i < stamenCount; i++) {
+            const angle = (i * Math.PI * 2 / stamenCount) + Math.PI / 6;
+            const length = 6 + Math.random() * 2;
+
+            ctx.save();
+            ctx.rotate(angle);
+
+            // Stamen filament
+            ctx.strokeStyle = COLORS.petalWhite;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(0, -2);
+            ctx.lineTo(0, -length);
+            ctx.stroke();
+
+            // Anther (pollen holder)
+            ctx.fillStyle = COLORS.anther;
+            ctx.beginPath();
+            ctx.ellipse(0, -length - 1.5, 1, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+    }
+
+    // Draw wilted lily with drooping petals
+    drawWiltedLily(ctx) {
+        const petalCount = 6;
+
+        for (let i = 0; i < petalCount; i++) {
+            const angle = (i * Math.PI * 2 / petalCount) - Math.PI / 2;
+            ctx.save();
+            ctx.rotate(angle);
+
+            // Drooping, curled petal
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.bezierCurveTo(-3, 4, -5, 10, -2, 14);
+            ctx.quadraticCurveTo(0, 15, 2, 14);
+            ctx.bezierCurveTo(5, 10, 3, 4, 0, 0);
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 14);
+            gradient.addColorStop(0, COLORS.wilted);
+            gradient.addColorStop(1, COLORS.wiltedPetal);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Dried center
+        ctx.fillStyle = COLORS.wilted;
+        ctx.beginPath();
+        ctx.arc(0, 2, 3, 0, Math.PI * 2);
+        ctx.fill();
     }
 }
 
