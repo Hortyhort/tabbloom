@@ -168,7 +168,7 @@ class Butterfly {
         this.speed = 0.5 + Math.random() * 1;
         this.wingPhase = Math.random() * Math.PI * 2;
         this.wingSpeed = 0.3 + Math.random() * 0.2;
-        this.size = 4 + Math.random() * 4;
+        this.size = this.getSeasonalSize();
         this.color = this.getRandomColor();
         this.accentColor = this.getAccentColor();
         this.restTimer = 0;
@@ -177,13 +177,36 @@ class Butterfly {
     }
 
     getRandomColor() {
-        const colors = ['#FFB7C5', '#FFC9A8', '#B7D4FF', '#D4B7FF', '#FFE4B5', '#98D8AA'];
+        // Seasonal butterfly colors
+        const season = typeof getCurrentSeason === 'function' ? getCurrentSeason() : 'spring';
+        const seasonalColors = {
+            spring: ['#FFD4E5', '#E5D4FF', '#D4F0FF', '#FFFFD4', '#D4FFE5', '#FFE4F0'], // Soft pastels
+            summer: ['#FFB7C5', '#FFC9A8', '#B7D4FF', '#D4B7FF', '#FFE4B5', '#98D8AA'], // Vibrant
+            autumn: ['#DEB887', '#D2691E', '#CD853F', '#B8860B', '#DAA520', '#CC7A4A'], // Warm earth tones
+            winter: ['#E8E8FF', '#D4E8FF', '#FFE8F0', '#F0F0FF', '#E8F4FF', '#FFF0F8'], // Icy pastels
+        };
+        const colors = seasonalColors[season] || seasonalColors.spring;
         return colors[Math.floor(Math.random() * colors.length)];
     }
 
     getAccentColor() {
-        const colors = ['#FF8FAB', '#FFB088', '#88B4FF', '#B488FF', '#FFD488', '#78C890'];
+        const season = typeof getCurrentSeason === 'function' ? getCurrentSeason() : 'spring';
+        const seasonalAccents = {
+            spring: ['#FFB8D0', '#D0B8FF', '#B8E0FF', '#FFFFA0', '#B8FFD0', '#FFD0E8'], // Soft accent
+            summer: ['#FF8FAB', '#FFB088', '#88B4FF', '#B488FF', '#FFD488', '#78C890'], // Bold accent
+            autumn: ['#C4762D', '#A0522D', '#8B4513', '#996515', '#B8860B', '#AA6030'], // Rich earth
+            winter: ['#C8C8FF', '#A8D0FF', '#FFD0E0', '#D8D8FF', '#C8E8FF', '#FFE0F0'], // Cool accent
+        };
+        const colors = seasonalAccents[season] || seasonalAccents.spring;
         return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    // Seasonal size variation
+    getSeasonalSize() {
+        const season = typeof getCurrentSeason === 'function' ? getCurrentSeason() : 'spring';
+        const baseSizes = { spring: 5, summer: 6, autumn: 5, winter: 4 };
+        const variations = { spring: 4, summer: 5, autumn: 3, winter: 3 };
+        return (baseSizes[season] || 5) + Math.random() * (variations[season] || 4);
     }
 
     update() {
@@ -610,6 +633,79 @@ const AudioSystem = {
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
 
         source.start();
+    },
+
+    // Ambient soundscape state
+    ambientSource: null,
+    ambientGain: null,
+    isAmbientPlaying: false,
+
+    // Start seasonal ambient soundscape (very quiet background)
+    startAmbientSoundscape(season) {
+        if (this.isAmbientPlaying) return;
+        this.ensureContext();
+
+        // Create noise buffer for ambient sound
+        const duration = 4; // 4 second loop
+        const bufferSize = this.ctx.sampleRate * duration;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        if (season === 'summer') {
+            // Crickets: rhythmic chirping pattern
+            for (let i = 0; i < bufferSize; i++) {
+                const chirpFreq = 4000 + Math.sin(i * 0.001) * 500;
+                const chirpPattern = Math.sin(i * 0.05) > 0.8 ? 1 : 0;
+                const chirp = Math.sin(i * chirpFreq / this.ctx.sampleRate) * chirpPattern;
+                data[i] = chirp * 0.02 * (0.5 + Math.random() * 0.5);
+            }
+        } else if (season === 'autumn') {
+            // Soft wind: filtered noise with gentle modulation
+            for (let i = 0; i < bufferSize; i++) {
+                const windMod = Math.sin(i * 0.0001) * 0.5 + 0.5;
+                data[i] = (Math.random() * 2 - 1) * 0.015 * windMod;
+            }
+        } else if (season === 'winter') {
+            // Snow hush: very soft white noise
+            for (let i = 0; i < bufferSize; i++) {
+                const hush = Math.sin(i * 0.00005) * 0.3 + 0.7;
+                data[i] = (Math.random() * 2 - 1) * 0.008 * hush;
+            }
+        } else {
+            // Spring: gentle birds/nature (soft tones)
+            for (let i = 0; i < bufferSize; i++) {
+                const birdChance = Math.random() > 0.9995 ? Math.sin(i * 0.1) * 0.03 : 0;
+                const rustle = (Math.random() * 2 - 1) * 0.005;
+                data[i] = birdChance + rustle;
+            }
+        }
+
+        this.ambientSource = this.ctx.createBufferSource();
+        this.ambientSource.buffer = buffer;
+        this.ambientSource.loop = true;
+
+        // Filter for warmth
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = season === 'summer' ? 6000 : 2000;
+
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.value = 0.3; // Very quiet
+
+        this.ambientSource.connect(filter);
+        filter.connect(this.ambientGain);
+        this.ambientGain.connect(this.ctx.destination);
+
+        this.ambientSource.start();
+        this.isAmbientPlaying = true;
+    },
+
+    stopAmbientSoundscape() {
+        if (this.ambientSource) {
+            this.ambientSource.stop();
+            this.ambientSource = null;
+            this.isAmbientPlaying = false;
+        }
     }
 };
 
@@ -692,8 +788,15 @@ async function captureGardenScreenshot() {
     const bloomingCount = plants.filter(p => p.age < 0.3).length;
     const season = getCurrentSeason();
     const seasonEmoji = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' }[season];
+    const gardenName = document.getElementById('gardenName')?.textContent || 'My Digital Sanctuary';
 
     try {
+        // If blur tab titles is enabled, temporarily hide domain labels
+        const originalTooltip = tooltip.style.display;
+        if (shareSettings.blurTabTitles) {
+            tooltip.style.display = 'none';
+        }
+
         // Use html2canvas to capture the entire garden container
         const gardenContainer = document.getElementById('garden-container');
         const capturedCanvas = await html2canvas(gardenContainer, {
@@ -701,6 +804,9 @@ async function captureGardenScreenshot() {
             scale: 2, // Higher resolution
             logging: false
         });
+
+        // Restore tooltip
+        tooltip.style.display = originalTooltip;
 
         // Create final canvas with text overlay
         const finalCanvas = document.createElement('canvas');
@@ -712,6 +818,15 @@ async function captureGardenScreenshot() {
         // Draw captured garden
         finalCtx.drawImage(capturedCanvas, 0, 0);
 
+        // If blur tab titles, add blur overlay on domain text areas
+        if (shareSettings.blurTabTitles) {
+            finalCtx.filter = 'blur(8px)';
+            // Blur the lower portion where text appears
+            finalCtx.drawImage(capturedCanvas, 0, capturedCanvas.height * 0.7, capturedCanvas.width, capturedCanvas.height * 0.3,
+                              0, capturedCanvas.height * 0.7, capturedCanvas.width, capturedCanvas.height * 0.3);
+            finalCtx.filter = 'none';
+        }
+
         // Add beautiful footer overlay
         const gradient = finalCtx.createLinearGradient(0, capturedCanvas.height, 0, finalCanvas.height);
         gradient.addColorStop(0, 'rgba(255, 249, 245, 0.95)');
@@ -719,11 +834,14 @@ async function captureGardenScreenshot() {
         finalCtx.fillStyle = gradient;
         finalCtx.fillRect(0, capturedCanvas.height, finalCanvas.width, 100);
 
-        // Main title
+        // Main title (respect garden name setting)
         finalCtx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
         finalCtx.fillStyle = '#5D7A4A';
         finalCtx.textAlign = 'center';
-        finalCtx.fillText(`My TabBloom Garden ${seasonEmoji}`, finalCanvas.width / 2, capturedCanvas.height + 40);
+        const titleText = shareSettings.includeGardenName
+            ? `${gardenName} ${seasonEmoji}`
+            : `My TabBloom Garden ${seasonEmoji}`;
+        finalCtx.fillText(titleText, finalCanvas.width / 2, capturedCanvas.height + 40);
 
         // Stats line
         finalCtx.font = '18px -apple-system, BlinkMacSystemFont, sans-serif';
@@ -1614,12 +1732,27 @@ async function initGarden() {
         shareBtn.addEventListener('click', captureGardenScreenshot);
     }
 
+    // Set up Share settings button
+    const shareSettingsBtn = document.getElementById('shareSettingsBtn');
+    if (shareSettingsBtn) {
+        shareSettingsBtn.addEventListener('click', showShareSettingsPanel);
+    }
+
     // Set up onboarding
     setupOnboarding();
     await checkOnboarding();
 
     // Initialize ambient effects (fireflies, butterflies)
     initAmbientEffects();
+
+    // Initialize dark mode
+    updateDarkMode();
+
+    // Load share settings
+    await loadShareSettings();
+
+    // Show welcome tooltip for first-time users
+    await showWelcomeTooltip();
 
     // Update plant health every 10 seconds
     setInterval(updateAllPlantHealth, 10000);
@@ -1868,6 +2001,176 @@ function initAmbientEffects() {
             seasonalParticles.push(new Snowflake());
         }
     }
+
+    // Start ambient soundscape (user interaction required for audio)
+    document.addEventListener('click', function startAmbient() {
+        AudioSystem.startAmbientSoundscape(season);
+        document.removeEventListener('click', startAmbient);
+    }, { once: true });
+}
+
+// ============================================
+// Dark Mode Auto-Detection
+// ============================================
+let isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+function updateDarkMode() {
+    isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    // Update color palette for dark mode
+    if (isDarkMode) {
+        COLORS.skyTop = '#1a1a2e';
+        COLORS.skyMid = '#2d2d44';
+        COLORS.skyBottom = '#3d3d5c';
+        COLORS.text = '#e0e0e0';
+        COLORS.shadow = 'rgba(0, 0, 0, 0.4)';
+    } else {
+        COLORS.skyTop = '#7BA4D4';
+        COLORS.skyMid = '#F8C9A8';
+        COLORS.skyBottom = '#FFE4D6';
+        COLORS.text = '#3D3226';
+        COLORS.shadow = 'rgba(62, 45, 35, 0.15)';
+    }
+}
+
+// Listen for dark mode changes
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateDarkMode);
+
+// ============================================
+// First-Install Welcome Tooltip
+// ============================================
+async function showWelcomeTooltip() {
+    const result = await chrome.storage.local.get(['hasSeenWelcome']);
+
+    if (!result.hasSeenWelcome) {
+        // Create welcome tooltip
+        const welcomeTip = document.createElement('div');
+        welcomeTip.id = 'welcome-tooltip';
+        welcomeTip.innerHTML = `
+            <div style="
+                position: fixed;
+                bottom: 120px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
+                padding: 16px 24px;
+                border-radius: 16px;
+                box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+                z-index: 1000;
+                text-align: center;
+                max-width: 280px;
+                animation: floatIn 0.5s ease-out;
+            ">
+                <div style="font-size: 24px; margin-bottom: 8px;">🌱</div>
+                <div style="color: #5D7A4A; font-weight: 600; margin-bottom: 4px;">Welcome to your sanctuary!</div>
+                <div style="color: #7A6B5A; font-size: 12px; line-height: 1.4;">
+                    Your tabs are seeds — nurture them by visiting!
+                    <br>Click any flower to harvest.
+                </div>
+                <button onclick="this.parentElement.parentElement.remove(); chrome.storage.local.set({hasSeenWelcome: true});" style="
+                    margin-top: 12px;
+                    background: #5D7A4A;
+                    color: white;
+                    border: none;
+                    padding: 8px 20px;
+                    border-radius: 20px;
+                    cursor: pointer;
+                    font-size: 12px;
+                ">Got it!</button>
+            </div>
+        `;
+        document.body.appendChild(welcomeTip);
+
+        // Add float animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes floatIn {
+                from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+                to { opacity: 1; transform: translateX(-50%) translateY(0); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+// ============================================
+// Share Tour Settings
+// ============================================
+let shareSettings = {
+    includeGardenName: true,
+    blurTabTitles: false
+};
+
+async function loadShareSettings() {
+    const result = await chrome.storage.local.get(['shareSettings']);
+    if (result.shareSettings) {
+        shareSettings = { ...shareSettings, ...result.shareSettings };
+    }
+}
+
+function saveShareSettings() {
+    chrome.storage.local.set({ shareSettings });
+}
+
+function showShareSettingsPanel() {
+    // Remove existing panel if open
+    const existing = document.getElementById('share-settings-panel');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+
+    const panel = document.createElement('div');
+    panel.id = 'share-settings-panel';
+    panel.innerHTML = `
+        <div style="
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
+            padding: 16px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+            min-width: 200px;
+        ">
+            <div style="font-weight: 600; color: #5D7A4A; margin-bottom: 12px; font-size: 14px;">Share Settings</div>
+
+            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer; font-size: 12px; color: #7A6B5A;">
+                <input type="checkbox" id="setting-garden-name" ${shareSettings.includeGardenName ? 'checked' : ''} style="accent-color: #5D7A4A;">
+                Include garden name
+            </label>
+
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: #7A6B5A;">
+                <input type="checkbox" id="setting-blur-titles" ${shareSettings.blurTabTitles ? 'checked' : ''} style="accent-color: #5D7A4A;">
+                Blur tab titles (privacy)
+            </label>
+
+            <button onclick="document.getElementById('share-settings-panel').remove();" style="
+                margin-top: 12px;
+                width: 100%;
+                background: #5D7A4A;
+                color: white;
+                border: none;
+                padding: 8px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 12px;
+            ">Done</button>
+        </div>
+    `;
+    document.body.appendChild(panel);
+
+    // Add event listeners for checkboxes
+    document.getElementById('setting-garden-name').addEventListener('change', (e) => {
+        shareSettings.includeGardenName = e.target.checked;
+        saveShareSettings();
+    });
+
+    document.getElementById('setting-blur-titles').addEventListener('change', (e) => {
+        shareSettings.blurTabTitles = e.target.checked;
+        saveShareSettings();
+    });
 }
 
 resizeCanvas();
