@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <defs>
+    <!-- Main petal gradient - soft pink bloom -->
+    <linearGradient id="petalGradient" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FF8FA3"/>
+      <stop offset="40%" stop-color="#FFB7C5"/>
+      <stop offset="80%" stop-color="#FFF5F7"/>
+      <stop offset="100%" stop-color="#FFFFFF"/>
+    </linearGradient>
+
+    <!-- Accent petal gradient - deeper pink -->
+    <linearGradient id="petalAccent" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#E891A5"/>
+      <stop offset="50%" stop-color="#FFB7C5"/>
+      <stop offset="100%" stop-color="#FFE4EC"/>
+    </linearGradient>
+
+    <!-- Center gradient - golden warmth -->
+    <radialGradient id="centerGradient" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE066"/>
+      <stop offset="60%" stop-color="#FFD700"/>
+      <stop offset="100%" stop-color="#F5A623"/>
+    </radialGradient>
+
+    <!-- Stem gradient -->
+    <linearGradient id="stemGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7CB342"/>
+      <stop offset="100%" stop-color="#558B2F"/>
+    </linearGradient>
+
+    <!-- Leaf gradient -->
+    <linearGradient id="leafGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8BC34A"/>
+      <stop offset="100%" stop-color="#689F38"/>
+    </linearGradient>
+
+    <!-- Soft glow filter -->
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Drop shadow -->
+    <filter id="dropShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Background circle (optional, can be removed for transparent) -->
+  <circle cx="64" cy="64" r="60" fill="url(#bgGradient)" opacity="0"/>
+
+  <!-- Stem -->
+  <path d="M64 78 Q64 95 64 110"
+        stroke="url(#stemGradient)"
+        stroke-width="5"
+        stroke-linecap="round"
+        fill="none"/>
+
+  <!-- Left leaf -->
+  <g transform="translate(64, 95) rotate(-45)">
+    <ellipse cx="-12" cy="0" rx="14" ry="7" fill="url(#leafGradient)"/>
+    <path d="M-22 0 Q-12 0 -2 0" stroke="#558B2F" stroke-width="0.8" fill="none" opacity="0.6"/>
+  </g>
+
+  <!-- Right leaf -->
+  <g transform="translate(64, 88) rotate(40)">
+    <ellipse cx="12" cy="0" rx="12" ry="6" fill="url(#leafGradient)"/>
+    <path d="M4 0 Q12 0 20 0" stroke="#558B2F" stroke-width="0.8" fill="none" opacity="0.6"/>
+  </g>
+
+  <!-- Flower head group with soft shadow -->
+  <g filter="url(#dropShadow)">
+    <!-- Back petals (6 petals, lily style) -->
+    <g transform="translate(64, 58)">
+      <!-- Petal 1 - top -->
+      <path d="M0 -8 Q-8 -28 0 -42 Q8 -28 0 -8"
+            fill="url(#petalAccent)"
+            transform="rotate(0)"/>
+
+      <!-- Petal 2 -->
+      <path d="M0 -8 Q-8 -28 0 -42 Q8 -28 0 -8"
+            fill="url(#petalGradient)"
+            transform="rotate(60)"/>
+
+      <!-- Petal 3 -->
+      <path d="M0 -8 Q-8 -28 0 -42 Q8 -28 0 -8"
+            fill="url(#petalAccent)"
+            transform="rotate(120)"/>
+
+      <!-- Petal 4 -->
+      <path d="M0 -8 Q-8 -28 0 -42 Q8 -28 0 -8"
+            fill="url(#petalGradient)"
+            transform="rotate(180)"/>
+
+      <!-- Petal 5 -->
+      <path d="M0 -8 Q-8 -28 0 -42 Q8 -28 0 -8"
+            fill="url(#petalAccent)"
+            transform="rotate(240)"/>
+
+      <!-- Petal 6 -->
+      <path d="M0 -8 Q-8 -28 0 -42 Q8 -28 0 -8"
+            fill="url(#petalGradient)"
+            transform="rotate(300)"/>
+    </g>
+
+    <!-- Front detail petals (smaller, overlapping) -->
+    <g transform="translate(64, 58)">
+      <path d="M0 -5 Q-5 -18 0 -28 Q5 -18 0 -5"
+            fill="url(#petalGradient)"
+            transform="rotate(30)"
+            opacity="0.9"/>
+      <path d="M0 -5 Q-5 -18 0 -28 Q5 -18 0 -5"
+            fill="url(#petalGradient)"
+            transform="rotate(90)"
+            opacity="0.9"/>
+      <path d="M0 -5 Q-5 -18 0 -28 Q5 -18 0 -5"
+            fill="url(#petalGradient)"
+            transform="rotate(150)"
+            opacity="0.9"/>
+      <path d="M0 -5 Q-5 -18 0 -28 Q5 -18 0 -5"
+            fill="url(#petalGradient)"
+            transform="rotate(210)"
+            opacity="0.9"/>
+      <path d="M0 -5 Q-5 -18 0 -28 Q5 -18 0 -5"
+            fill="url(#petalGradient)"
+            transform="rotate(270)"
+            opacity="0.9"/>
+      <path d="M0 -5 Q-5 -18 0 -28 Q5 -18 0 -5"
+            fill="url(#petalGradient)"
+            transform="rotate(330)"
+            opacity="0.9"/>
+    </g>
+
+    <!-- Flower center -->
+    <circle cx="64" cy="58" r="10" fill="url(#centerGradient)"/>
+
+    <!-- Stamens (golden dots around center) -->
+    <g transform="translate(64, 58)">
+      <circle cx="0" cy="-6" r="2" fill="#FFD700"/>
+      <circle cx="5.2" cy="-3" r="2" fill="#FFE066"/>
+      <circle cx="5.2" cy="3" r="2" fill="#FFD700"/>
+      <circle cx="0" cy="6" r="2" fill="#FFE066"/>
+      <circle cx="-5.2" cy="3" r="2" fill="#FFD700"/>
+      <circle cx="-5.2" cy="-3" r="2" fill="#FFE066"/>
+    </g>
+
+    <!-- Center highlight -->
+    <circle cx="62" cy="56" r="3" fill="white" opacity="0.4"/>
+  </g>
+</svg>

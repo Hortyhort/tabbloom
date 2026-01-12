@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <defs>
+    <!-- Simplified gradients for medium size -->
+    <linearGradient id="petal48" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#FF8FA3"/>
+      <stop offset="50%" stop-color="#FFB7C5"/>
+      <stop offset="100%" stop-color="#FFF5F7"/>
+    </linearGradient>
+
+    <linearGradient id="petalAlt48" x1="0%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#E891A5"/>
+      <stop offset="100%" stop-color="#FFD4DE"/>
+    </linearGradient>
+
+    <radialGradient id="center48" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#FFE066"/>
+      <stop offset="100%" stop-color="#FFD700"/>
+    </radialGradient>
+
+    <linearGradient id="stem48" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#7CB342"/>
+      <stop offset="100%" stop-color="#558B2F"/>
+    </linearGradient>
+
+    <linearGradient id="leaf48" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#8BC34A"/>
+      <stop offset="100%" stop-color="#689F38"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Stem -->
+  <path d="M24 30 L24 42" stroke="url(#stem48)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Leaves (simplified) -->
+  <ellipse cx="18" cy="36" rx="5" ry="2.5" fill="url(#leaf48)" transform="rotate(-35 18 36)"/>
+  <ellipse cx="30" cy="34" rx="4.5" ry="2.2" fill="url(#leaf48)" transform="rotate(35 30 34)"/>
+
+  <!-- Flower petals (6 lily petals) -->
+  <g transform="translate(24, 22)">
+    <path d="M0 -3 Q-3.5 -10 0 -16 Q3.5 -10 0 -3" fill="url(#petalAlt48)" transform="rotate(0)"/>
+    <path d="M0 -3 Q-3.5 -10 0 -16 Q3.5 -10 0 -3" fill="url(#petal48)" transform="rotate(60)"/>
+    <path d="M0 -3 Q-3.5 -10 0 -16 Q3.5 -10 0 -3" fill="url(#petalAlt48)" transform="rotate(120)"/>
+    <path d="M0 -3 Q-3.5 -10 0 -16 Q3.5 -10 0 -3" fill="url(#petal48)" transform="rotate(180)"/>
+    <path d="M0 -3 Q-3.5 -10 0 -16 Q3.5 -10 0 -3" fill="url(#petalAlt48)" transform="rotate(240)"/>
+    <path d="M0 -3 Q-3.5 -10 0 -16 Q3.5 -10 0 -3" fill="url(#petal48)" transform="rotate(300)"/>
+  </g>
+
+  <!-- Center -->
+  <circle cx="24" cy="22" r="4.5" fill="url(#center48)"/>
+
+  <!-- Stamens (simplified) -->
+  <g transform="translate(24, 22)">
+    <circle cx="0" cy="-2.5" r="1" fill="#FFD700"/>
+    <circle cx="2.2" cy="1.2" r="1" fill="#FFE066"/>
+    <circle cx="-2.2" cy="1.2" r="1" fill="#FFD700"/>
+  </g>
+
+  <!-- Highlight -->
+  <circle cx="23" cy="21" r="1.5" fill="white" opacity="0.4"/>
+</svg>
