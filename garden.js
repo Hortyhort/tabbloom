@@ -174,7 +174,7 @@ class Plant {
         this.element = null; // DOM element reference
         this.age = Math.random(); // Placeholder for activity logic
         this.sway = Math.random() * Math.PI * 2; // Random start phase
-        this.swaySpeed = 0.02 + Math.random() * 0.02;
+        this.swaySpeed = 0.004 + Math.random() * 0.004; // Gentle floating speed
     }
 
     update() {
