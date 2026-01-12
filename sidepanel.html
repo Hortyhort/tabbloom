@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="garden-container">
+    <header class="garden-header">
+      <div class="header-main">
+        <h1 id="gardenName">My Digital Sanctuary</h1>
+        <div class="stats-pills">
+          <span class="pill coins">✨ 120</span>
+          <span class="pill season">Spring</span>
+        </div>
+      </div>
+    </header>
+    
+    <div id="garden-container" style="
+      flex: 1;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+      position: relative;
+    ">
+      <canvas id="garden-canvas" style="max-width: 100%; max-height: 100%;"></canvas>
+      <div id="tooltip" class="glass-tooltip hidden"></div>
+    </div>
+
+    <footer class="garden-footer">
+      <button id="harvestAll" class="harvest-btn">Harvest Dormant Tabs</button>
+      <p class="stats-text">47 tabs bloomed this week 🌱</p>
+    </footer>
+  </div>
+  <script src="garden.js"></script>
+</body>
+</html>
