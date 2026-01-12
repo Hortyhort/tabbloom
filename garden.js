@@ -25,10 +25,10 @@ const COLORS = {
 };
 
 // Grid layout settings - larger plants with more breathing room
-const PLANT_SIZE = 90;
-const PLANT_HEIGHT = 130;
-const SPACING = 130;
-const SCALE = 1.8;
+const PLANT_SIZE = 80;
+const PLANT_HEIGHT = 110;
+const SPACING = 110;
+const SCALE = 1.4;
 
 // Create interactive DOM element overlay for a plant
 function createPlantElement(tab, x, y) {
@@ -239,7 +239,7 @@ class Plant {
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
-            const textY = this.y + 75;
+            const textY = this.y + 60;
             const maxWidth = 90;
 
             // Wrap to two lines if too long
