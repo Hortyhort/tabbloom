@@ -51,6 +51,36 @@
       </div>
     </div>
 
+    <!-- Filter Bar -->
+    <div class="filter-bar" role="toolbar" aria-label="Filter plants">
+      <button class="filter-chip active" data-filter="all" aria-pressed="true">
+        All
+        <span class="filter-chip-count" id="filterCountAll">0</span>
+      </button>
+      <button class="filter-chip" data-filter="healthy" aria-pressed="false">
+        Healthy
+        <span class="filter-chip-count" id="filterCountHealthy">0</span>
+      </button>
+      <button class="filter-chip" data-filter="wilting" aria-pressed="false">
+        Wilting
+        <span class="filter-chip-count" id="filterCountWilting">0</span>
+      </button>
+      <button class="filter-chip" data-filter="dormant" aria-pressed="false">
+        Dormant
+        <span class="filter-chip-count" id="filterCountDormant">0</span>
+      </button>
+      <input
+        type="search"
+        class="filter-search"
+        id="filterSearch"
+        placeholder="Search..."
+        aria-label="Search plants by name or domain"
+      >
+      <button class="filter-chip" id="selectModeToggle" aria-pressed="false">
+        Select
+      </button>
+    </div>
+
     <!-- Garden Canvas -->
     <div id="garden-container" class="garden-scroll" role="region" aria-label="Tab garden visualization">
       <canvas id="garden-canvas" aria-hidden="true"></canvas>
@@ -94,6 +124,21 @@
       </button>
       <p class="stats-text" id="weeklyStats">0 tabs bloomed this week</p>
     </footer>
+  </div>
+
+  <!-- Batch Action Bar -->
+  <div id="batchActionBar" class="batch-action-bar" role="toolbar" aria-label="Batch actions">
+    <div class="batch-info">
+      <span class="batch-count" id="batchCount">0</span>
+      <span>selected</span>
+    </div>
+    <div class="batch-actions">
+      <button class="btn-text" id="batchSelectAll">Select All</button>
+      <button class="btn-text" id="batchCancel">Cancel</button>
+      <button class="btn-primary btn-sm" id="batchHarvest" aria-label="Harvest selected plants">
+        Harvest
+      </button>
+    </div>
   </div>
 
   <!-- Onboarding Overlay -->

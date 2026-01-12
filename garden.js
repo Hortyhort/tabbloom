@@ -250,6 +250,13 @@ function getTimeAgo(timestamp) {
 async function harvestSinglePlant(plant) {
     if (!plant) return;
 
+    // Store for undo
+    const harvestedTab = {
+        url: plant.tab.url,
+        title: plant.tab.title,
+        favIconUrl: plant.tab.favIconUrl
+    };
+
     bloomParticles(plant.x, plant.y, 30);
     AudioSystem.playHarvestChime();
 
@@ -261,7 +268,10 @@ async function harvestSinglePlant(plant) {
         updateCoins(gardenSettings.harvestCoins);
         recordHarvest(1, gardenSettings.harvestCoins);
         updateStatsDisplay();
-        Toast.success(`Harvested +${gardenSettings.harvestCoins} coins`);
+        updateFilterCounts();
+
+        // Show undo toast
+        showUndoToast([harvestedTab], gardenSettings.harvestCoins);
 
         // Show empty state if no plants left
         if (plants.length === 0) {
@@ -270,6 +280,336 @@ async function harvestSinglePlant(plant) {
     } catch (err) {
         console.error("Failed to close tab:", err);
         Toast.error("Couldn't close tab");
+    }
+}
+
+// ============================================
+// Undo Harvest System
+// ============================================
+let undoTimeout = null;
+let pendingUndo = null;
+
+function showUndoToast(harvestedTabs, coinsEarned) {
+    // Clear any existing undo
+    if (undoTimeout) {
+        clearTimeout(undoTimeout);
+    }
+
+    pendingUndo = { tabs: harvestedTabs, coins: coinsEarned };
+
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <div class="toast-undo">
+            <span class="toast-message">Harvested ${harvestedTabs.length} tab${harvestedTabs.length > 1 ? 's' : ''}</span>
+            <button class="toast-undo-btn" id="undoHarvestBtn">Undo</button>
+        </div>
+        <div class="toast-timer"><div class="toast-timer-bar"></div></div>
+    `;
+
+    Toast.init();
+    Toast.container.appendChild(toast);
+
+    requestAnimationFrame(() => {
+        toast.classList.add('visible');
+    });
+
+    // Set up undo button
+    const undoBtn = toast.querySelector('#undoHarvestBtn');
+    undoBtn.addEventListener('click', async () => {
+        if (pendingUndo) {
+            await undoHarvest();
+            toast.classList.remove('visible');
+            setTimeout(() => toast.remove(), 300);
+        }
+    });
+
+    // Auto-dismiss after 5 seconds
+    undoTimeout = setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+        pendingUndo = null;
+    }, 5000);
+}
+
+async function undoHarvest() {
+    if (!pendingUndo) return;
+
+    const { tabs, coins } = pendingUndo;
+
+    // Deduct the coins
+    updateCoins(-coins);
+
+    // Reopen tabs
+    for (const tab of tabs) {
+        try {
+            await chrome.tabs.create({ url: tab.url, active: false });
+        } catch (err) {
+            console.error("Failed to restore tab:", err);
+        }
+    }
+
+    Toast.success(`Restored ${tabs.length} tab${tabs.length > 1 ? 's' : ''}`);
+    pendingUndo = null;
+
+    if (undoTimeout) {
+        clearTimeout(undoTimeout);
+        undoTimeout = null;
+    }
+
+    // Refresh garden after a short delay to let tabs load
+    setTimeout(async () => {
+        const activityResult = await chrome.storage.local.get(['tabActivity']);
+        const tabActivity = activityResult.tabActivity || {};
+        const allTabs = await chrome.tabs.query({});
+
+        plants.forEach(p => { if (p.element) p.element.remove(); });
+
+        plants = allTabs.map(tab => {
+            const lastActiveTime = tabActivity[tab.id] || Date.now();
+            return new Plant(tab, lastActiveTime);
+        });
+
+        layoutPlants();
+        plants.forEach((plant, index) => {
+            plant.element = createPlantElement(plant.tab, plant.x, plant.y, index);
+        });
+
+        updateStatsDisplay();
+        updateFilterCounts();
+    }, 500);
+}
+
+// ============================================
+// Filter System
+// ============================================
+let currentFilter = 'all';
+let searchQuery = '';
+
+function setupFilterSystem() {
+    const filterChips = document.querySelectorAll('.filter-chip[data-filter]');
+    const searchInput = document.getElementById('filterSearch');
+
+    filterChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            filterChips.forEach(c => {
+                c.classList.remove('active');
+                c.setAttribute('aria-pressed', 'false');
+            });
+            chip.classList.add('active');
+            chip.setAttribute('aria-pressed', 'true');
+
+            currentFilter = chip.dataset.filter;
+            applyFilters();
+            AudioSystem.playHoverSoft();
+        });
+    });
+
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value.toLowerCase().trim();
+            applyFilters();
+        });
+    }
+
+    updateFilterCounts();
+}
+
+function getPlantStatus(plant) {
+    if (plant.age < 0.3) return 'healthy';
+    if (plant.age < 0.7) return 'wilting';
+    return 'dormant';
+}
+
+function applyFilters() {
+    plants.forEach(plant => {
+        if (!plant.element) return;
+
+        const status = getPlantStatus(plant);
+        const matchesFilter = currentFilter === 'all' || status === currentFilter;
+
+        let matchesSearch = true;
+        if (searchQuery) {
+            const title = (plant.tab.title || '').toLowerCase();
+            const url = (plant.tab.url || '').toLowerCase();
+            matchesSearch = title.includes(searchQuery) || url.includes(searchQuery);
+        }
+
+        const isVisible = matchesFilter && matchesSearch;
+        plant.element.style.display = isVisible ? '' : 'none';
+        plant.filtered = !isVisible;
+    });
+}
+
+function updateFilterCounts() {
+    const counts = {
+        all: plants.length,
+        healthy: plants.filter(p => p.age < 0.3).length,
+        wilting: plants.filter(p => p.age >= 0.3 && p.age < 0.7).length,
+        dormant: plants.filter(p => p.age >= 0.7).length
+    };
+
+    const allEl = document.getElementById('filterCountAll');
+    const healthyEl = document.getElementById('filterCountHealthy');
+    const wiltingEl = document.getElementById('filterCountWilting');
+    const dormantEl = document.getElementById('filterCountDormant');
+
+    if (allEl) allEl.textContent = counts.all;
+    if (healthyEl) healthyEl.textContent = counts.healthy;
+    if (wiltingEl) wiltingEl.textContent = counts.wilting;
+    if (dormantEl) dormantEl.textContent = counts.dormant;
+}
+
+// ============================================
+// Batch Selection System
+// ============================================
+let selectionMode = false;
+let selectedPlants = new Set();
+
+function setupBatchSelection() {
+    const selectModeToggle = document.getElementById('selectModeToggle');
+    const batchActionBar = document.getElementById('batchActionBar');
+    const batchSelectAll = document.getElementById('batchSelectAll');
+    const batchCancel = document.getElementById('batchCancel');
+    const batchHarvest = document.getElementById('batchHarvest');
+    const gardenContainer = document.getElementById('garden-container');
+
+    if (selectModeToggle) {
+        selectModeToggle.addEventListener('click', () => {
+            selectionMode = !selectionMode;
+            selectModeToggle.classList.toggle('active', selectionMode);
+            selectModeToggle.setAttribute('aria-pressed', String(selectionMode));
+            gardenContainer?.classList.toggle('selection-mode', selectionMode);
+
+            if (!selectionMode) {
+                clearSelection();
+            }
+
+            updateBatchActionBar();
+            AudioSystem.playHoverSoft();
+        });
+    }
+
+    if (batchSelectAll) {
+        batchSelectAll.addEventListener('click', () => {
+            plants.forEach(plant => {
+                if (!plant.filtered && plant.element) {
+                    selectedPlants.add(plant);
+                    plant.element.classList.add('selected');
+                }
+            });
+            updateBatchActionBar();
+        });
+    }
+
+    if (batchCancel) {
+        batchCancel.addEventListener('click', () => {
+            exitSelectionMode();
+        });
+    }
+
+    if (batchHarvest) {
+        batchHarvest.addEventListener('click', async () => {
+            if (selectedPlants.size === 0) return;
+            await harvestSelectedPlants();
+        });
+    }
+}
+
+async function harvestSelectedPlants() {
+    const plantsToHarvest = Array.from(selectedPlants);
+    const harvestedTabs = [];
+    let harvestedCount = 0;
+
+    AudioSystem.playHarvestChime();
+
+    for (const plant of plantsToHarvest) {
+        try {
+            harvestedTabs.push({
+                url: plant.tab.url,
+                title: plant.tab.title,
+                favIconUrl: plant.tab.favIconUrl
+            });
+            await chrome.tabs.remove(plant.tab.id);
+            bloomParticles(plant.x, plant.y);
+            if (plant.element) plant.element.remove();
+            harvestedCount++;
+            await new Promise(r => setTimeout(r, 80));
+        } catch (err) {
+            console.error("Failed to close tab:", err);
+        }
+    }
+
+    plants = plants.filter(p => !selectedPlants.has(p));
+    layoutPlants();
+
+    const coinsEarned = harvestedCount * gardenSettings.harvestCoins;
+    updateCoins(coinsEarned);
+    recordHarvest(harvestedCount, coinsEarned);
+    updateStatsDisplay();
+    updateFilterCounts();
+
+    showUndoToast(harvestedTabs, coinsEarned);
+
+    exitSelectionMode();
+
+    if (harvestedCount > 2 && gardenSettings.confettiEnabled && typeof confetti === 'function') {
+        AudioSystem.playHarvestAllCelebration();
+        confetti({
+            particleCount: 60 + harvestedCount * 8,
+            spread: 60,
+            origin: { y: 0.6 },
+            colors: ['#34C759', '#FFD60A', '#007AFF', '#5856D6', '#FF9500']
+        });
+    }
+}
+
+function exitSelectionMode() {
+    selectionMode = false;
+    const selectModeToggle = document.getElementById('selectModeToggle');
+    const gardenContainer = document.getElementById('garden-container');
+
+    selectModeToggle?.classList.remove('active');
+    selectModeToggle?.setAttribute('aria-pressed', 'false');
+    gardenContainer?.classList.remove('selection-mode');
+    clearSelection();
+    updateBatchActionBar();
+}
+
+function togglePlantSelection(plant) {
+    if (!selectionMode || !plant.element) return;
+
+    if (selectedPlants.has(plant)) {
+        selectedPlants.delete(plant);
+        plant.element.classList.remove('selected');
+    } else {
+        selectedPlants.add(plant);
+        plant.element.classList.add('selected');
+    }
+
+    updateBatchActionBar();
+}
+
+function clearSelection() {
+    selectedPlants.forEach(plant => {
+        if (plant.element) {
+            plant.element.classList.remove('selected');
+        }
+    });
+    selectedPlants.clear();
+}
+
+function updateBatchActionBar() {
+    const batchActionBar = document.getElementById('batchActionBar');
+    const batchCount = document.getElementById('batchCount');
+
+    if (batchCount) {
+        batchCount.textContent = selectedPlants.size;
+    }
+
+    if (batchActionBar) {
+        batchActionBar.classList.toggle('visible', selectionMode && selectedPlants.size > 0);
     }
 }
 
@@ -2049,6 +2389,12 @@ function createPlantElement(tab, x, y, plantIndex = 0) {
     // Set plant index for staggered breathing animation
     plant.style.setProperty('--plant-index', plantIndex);
 
+    // Add checkbox for selection mode
+    const checkbox = document.createElement('div');
+    checkbox.className = 'plant-checkbox';
+    checkbox.innerHTML = Icons.get('check', 14);
+    plant.appendChild(checkbox);
+
     plant.addEventListener('mouseenter', () => {
         AudioSystem.playHoverSoft(tab.id); // Pass plant ID to prevent repeated sounds
         // Apply magical hover animation with warm glow
@@ -2073,19 +2419,19 @@ function createPlantElement(tab, x, y, plantIndex = 0) {
     });
 
     plant.addEventListener('click', async () => {
-        try {
-            console.log('Harvesting tab:', tab.title);
-            await chrome.tabs.remove(tab.id);
-            bloomParticles(x, y);
-            AudioSystem.playHarvestChime();
-            plant.remove();
-            // Remove from plants array
-            plants = plants.filter(p => p.tabId !== tab.id);
-            layoutPlants();
-            updateCoins(gardenSettings.harvestCoins); // Reward for harvesting
-            recordHarvest(1, gardenSettings.harvestCoins); // Track individual harvest
-        } catch (err) {
-            console.error("Failed to close tab:", err);
+        // If in selection mode, toggle selection instead of harvesting
+        if (selectionMode) {
+            const plantObj = plants.find(p => p.tabId === tab.id);
+            if (plantObj) {
+                togglePlantSelection(plantObj);
+            }
+            return;
+        }
+
+        // Normal click behavior - show plant detail modal
+        const plantObj = plants.find(p => p.tabId === tab.id);
+        if (plantObj) {
+            showPlantDetail(plantObj);
         }
     });
 
@@ -3000,6 +3346,10 @@ async function initGarden() {
     // Set up Quick Actions mini-bar
     setupQuickActions();
 
+    // Set up filter and batch selection systems
+    setupFilterSystem();
+    setupBatchSelection();
+
     // Load garden stats for tracking
     await loadGardenStats();
 
@@ -3077,12 +3427,19 @@ async function harvestDormantTabs() {
     }
 
     let harvestedCount = 0;
+    const harvestedTabs = [];
 
     // Play harvest chime once for batch
     AudioSystem.playHarvestChime();
 
     for (const plant of dormantPlants) {
         try {
+            // Store tab info for undo
+            harvestedTabs.push({
+                url: plant.tab.url,
+                title: plant.tab.title,
+                favIconUrl: plant.tab.favIconUrl
+            });
             await chrome.tabs.remove(plant.tabId);
             bloomParticles(plant.x, plant.y);
             if (plant.element) {
@@ -3101,19 +3458,20 @@ async function harvestDormantTabs() {
     layoutPlants();
 
     // Award coins for batch harvest (bonus for efficiency!)
-    const coinsEarned = harvestedCount * 15;
+    const coinsEarned = harvestedCount * gardenSettings.harvestCoins;
     updateCoins(coinsEarned);
 
     // Record stats for lifetime tracking
     recordHarvest(harvestedCount, coinsEarned);
 
-    // Update stats
+    // Update stats and filter counts
     updateStatsDisplay();
+    updateFilterCounts();
 
-    // Celebration time! Confetti + happy chime + toast
+    // Celebration time! Confetti + happy chime + undo toast
     if (harvestedCount > 0) {
         AudioSystem.playHarvestAllCelebration();
-        Toast.success(`Harvested ${harvestedCount} tabs, +${coinsEarned} coins!`);
+        showUndoToast(harvestedTabs, coinsEarned);
 
         // Trigger confetti burst (garden colors)
         if (gardenSettings.confettiEnabled && typeof confetti === 'function') {
