@@ -2043,42 +2043,64 @@ async function showWelcomeTooltip() {
     const result = await chrome.storage.local.get(['hasSeenWelcome']);
 
     if (!result.hasSeenWelcome) {
-        // Create welcome tooltip
+        // Create welcome tooltip container
         const welcomeTip = document.createElement('div');
         welcomeTip.id = 'welcome-tooltip';
-        welcomeTip.innerHTML = `
-            <div style="
-                position: fixed;
-                bottom: 120px;
-                left: 50%;
-                transform: translateX(-50%);
-                background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
-                padding: 16px 24px;
-                border-radius: 16px;
-                box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-                z-index: 1000;
-                text-align: center;
-                max-width: 280px;
-                animation: floatIn 0.5s ease-out;
-            ">
-                <div style="font-size: 24px; margin-bottom: 8px;">🌱</div>
-                <div style="color: #5D7A4A; font-weight: 600; margin-bottom: 4px;">Welcome to your sanctuary!</div>
-                <div style="color: #7A6B5A; font-size: 12px; line-height: 1.4;">
-                    Your tabs are seeds — nurture them by visiting!
-                    <br>Click any flower to harvest.
-                </div>
-                <button onclick="this.parentElement.parentElement.remove(); chrome.storage.local.set({hasSeenWelcome: true});" style="
-                    margin-top: 12px;
-                    background: #5D7A4A;
-                    color: white;
-                    border: none;
-                    padding: 8px 20px;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    font-size: 12px;
-                ">Got it!</button>
-            </div>
+        welcomeTip.style.cssText = `
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
+            padding: 16px 24px;
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            z-index: 10000;
+            text-align: center;
+            max-width: 280px;
+            animation: floatIn 0.5s ease-out;
+            pointer-events: auto;
         `;
+
+        // Create content
+        const icon = document.createElement('div');
+        icon.style.cssText = 'font-size: 24px; margin-bottom: 8px;';
+        icon.textContent = '🌱';
+
+        const title = document.createElement('div');
+        title.style.cssText = 'color: #5D7A4A; font-weight: 600; margin-bottom: 4px;';
+        title.textContent = 'Welcome to your sanctuary!';
+
+        const desc = document.createElement('div');
+        desc.style.cssText = 'color: #7A6B5A; font-size: 12px; line-height: 1.4;';
+        desc.innerHTML = 'Your tabs are seeds — nurture them by visiting!<br>Click any flower to harvest.';
+
+        const button = document.createElement('button');
+        button.style.cssText = `
+            margin-top: 12px;
+            background: #5D7A4A;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 12px;
+            pointer-events: auto;
+        `;
+        button.textContent = 'Got it!';
+
+        // Add click handler properly (not inline)
+        button.addEventListener('click', () => {
+            welcomeTip.remove();
+            chrome.storage.local.set({ hasSeenWelcome: true });
+        });
+
+        // Assemble tooltip
+        welcomeTip.appendChild(icon);
+        welcomeTip.appendChild(title);
+        welcomeTip.appendChild(desc);
+        welcomeTip.appendChild(button);
+
         document.body.appendChild(welcomeTip);
 
         // Add float animation
@@ -2120,57 +2142,78 @@ function showShareSettingsPanel() {
         return;
     }
 
+    // Create panel container
     const panel = document.createElement('div');
     panel.id = 'share-settings-panel';
-    panel.innerHTML = `
-        <div style="
-            position: fixed;
-            top: 80px;
-            right: 20px;
-            background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
-            padding: 16px;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            z-index: 1000;
-            min-width: 200px;
-        ">
-            <div style="font-weight: 600; color: #5D7A4A; margin-bottom: 12px; font-size: 14px;">Share Settings</div>
-
-            <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer; font-size: 12px; color: #7A6B5A;">
-                <input type="checkbox" id="setting-garden-name" ${shareSettings.includeGardenName ? 'checked' : ''} style="accent-color: #5D7A4A;">
-                Include garden name
-            </label>
-
-            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: #7A6B5A;">
-                <input type="checkbox" id="setting-blur-titles" ${shareSettings.blurTabTitles ? 'checked' : ''} style="accent-color: #5D7A4A;">
-                Blur tab titles (privacy)
-            </label>
-
-            <button onclick="document.getElementById('share-settings-panel').remove();" style="
-                margin-top: 12px;
-                width: 100%;
-                background: #5D7A4A;
-                color: white;
-                border: none;
-                padding: 8px;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 12px;
-            ">Done</button>
-        </div>
+    panel.style.cssText = `
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
+        padding: 16px;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+        z-index: 10000;
+        min-width: 200px;
+        pointer-events: auto;
     `;
-    document.body.appendChild(panel);
 
-    // Add event listeners for checkboxes
-    document.getElementById('setting-garden-name').addEventListener('change', (e) => {
+    // Title
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight: 600; color: #5D7A4A; margin-bottom: 12px; font-size: 14px;';
+    title.textContent = 'Share Settings';
+
+    // Garden name checkbox
+    const label1 = document.createElement('label');
+    label1.style.cssText = 'display: flex; align-items: center; gap: 8px; margin-bottom: 10px; cursor: pointer; font-size: 12px; color: #7A6B5A;';
+    const checkbox1 = document.createElement('input');
+    checkbox1.type = 'checkbox';
+    checkbox1.checked = shareSettings.includeGardenName;
+    checkbox1.style.accentColor = '#5D7A4A';
+    checkbox1.addEventListener('change', (e) => {
         shareSettings.includeGardenName = e.target.checked;
         saveShareSettings();
     });
+    label1.appendChild(checkbox1);
+    label1.appendChild(document.createTextNode('Include garden name'));
 
-    document.getElementById('setting-blur-titles').addEventListener('change', (e) => {
+    // Blur titles checkbox
+    const label2 = document.createElement('label');
+    label2.style.cssText = 'display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: #7A6B5A;';
+    const checkbox2 = document.createElement('input');
+    checkbox2.type = 'checkbox';
+    checkbox2.checked = shareSettings.blurTabTitles;
+    checkbox2.style.accentColor = '#5D7A4A';
+    checkbox2.addEventListener('change', (e) => {
         shareSettings.blurTabTitles = e.target.checked;
         saveShareSettings();
     });
+    label2.appendChild(checkbox2);
+    label2.appendChild(document.createTextNode('Blur tab titles (privacy)'));
+
+    // Done button
+    const doneBtn = document.createElement('button');
+    doneBtn.style.cssText = `
+        margin-top: 12px;
+        width: 100%;
+        background: #5D7A4A;
+        color: white;
+        border: none;
+        padding: 8px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 12px;
+    `;
+    doneBtn.textContent = 'Done';
+    doneBtn.addEventListener('click', () => panel.remove());
+
+    // Assemble panel
+    panel.appendChild(title);
+    panel.appendChild(label1);
+    panel.appendChild(label2);
+    panel.appendChild(doneBtn);
+
+    document.body.appendChild(panel);
 }
 
 resizeCanvas();
