@@ -1697,6 +1697,68 @@ class Plant {
     }
 }
 
+// ============================================
+// Real-time Tab Listeners
+// ============================================
+function setupTabListeners() {
+    // When a new tab is created
+    chrome.tabs.onCreated.addListener((tab) => {
+        // Create new plant for the tab
+        const newPlant = new Plant(tab, Date.now());
+        plants.push(newPlant);
+        layoutPlants();
+        newPlant.element = createPlantElement(tab, newPlant.x, newPlant.y);
+        updateStatsDisplay();
+
+        // Play a soft growth sound
+        AudioSystem.playGrowthRustle();
+
+        // Add sparkle effect for new plant
+        sparkleParticles(newPlant.x, newPlant.y);
+    });
+
+    // When a tab is closed (externally, not via harvest)
+    chrome.tabs.onRemoved.addListener((tabId) => {
+        const plantIndex = plants.findIndex(p => p.tabId === tabId);
+        if (plantIndex !== -1) {
+            const plant = plants[plantIndex];
+            // Remove DOM element
+            if (plant.element) {
+                plant.element.remove();
+            }
+            // Remove from array
+            plants.splice(plantIndex, 1);
+            layoutPlants();
+            updateStatsDisplay();
+        }
+    });
+
+    // When a tab is updated (URL change, title change)
+    chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+        if (changeInfo.status === 'complete') {
+            const plant = plants.find(p => p.tabId === tabId);
+            if (plant) {
+                // Update plant info
+                plant.tab = tab;
+                plant.title = tab.title;
+                plant.url = tab.url;
+                plant.lastActiveTime = Date.now();
+                plant.age = 0; // Reset to blooming since it's active
+            }
+        }
+    });
+
+    // When a tab becomes active
+    chrome.tabs.onActivated.addListener((activeInfo) => {
+        const plant = plants.find(p => p.tabId === activeInfo.tabId);
+        if (plant) {
+            plant.lastActiveTime = Date.now();
+            // Trigger growth animation
+            plant.triggerGrowthAnimation();
+        }
+    });
+}
+
 async function initGarden() {
     // Apply seasonal theme
     applySeason();
@@ -1747,6 +1809,9 @@ async function initGarden() {
 
     // Initialize dark mode
     updateDarkMode();
+
+    // Set up real-time tab listeners
+    setupTabListeners();
 
     // Load share settings
     await loadShareSettings();
