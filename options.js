@@ -14,7 +14,11 @@ const defaultSettings = {
     particlesEnabled: true,
     gardenName: 'My Digital Sanctuary',
     confettiEnabled: true,
-    blurTitles: false
+    blurTitles: false,
+    // Performance settings
+    performanceMode: 'full',
+    maxVisiblePlants: 50,
+    targetFps: 60
 };
 
 // Current settings
@@ -48,6 +52,10 @@ function cacheElements() {
     elements.resetStats = document.getElementById('resetStats');
     elements.exportData = document.getElementById('exportData');
     elements.saveStatus = document.getElementById('saveStatus');
+    // Performance elements
+    elements.performanceMode = document.getElementById('performanceMode');
+    elements.maxVisiblePlants = document.getElementById('maxVisiblePlants');
+    elements.targetFps = document.getElementById('targetFps');
 }
 
 // Load settings from storage (sync for cross-device persistence)
@@ -94,6 +102,10 @@ function updateUI() {
     elements.gardenName.value = settings.gardenName;
     elements.confettiEnabled.checked = settings.confettiEnabled;
     elements.blurTitles.checked = settings.blurTitles;
+    // Performance settings
+    elements.performanceMode.value = settings.performanceMode;
+    elements.maxVisiblePlants.value = settings.maxVisiblePlants;
+    elements.targetFps.value = settings.targetFps;
 }
 
 // Bind event listeners
@@ -153,6 +165,22 @@ function bindEvents() {
 
     elements.seasonMode.addEventListener('change', (e) => {
         settings.seasonMode = e.target.value;
+        saveSettings();
+    });
+
+    // Performance settings
+    elements.performanceMode.addEventListener('change', (e) => {
+        settings.performanceMode = e.target.value;
+        saveSettings();
+    });
+
+    elements.maxVisiblePlants.addEventListener('change', (e) => {
+        settings.maxVisiblePlants = parseInt(e.target.value);
+        saveSettings();
+    });
+
+    elements.targetFps.addEventListener('change', (e) => {
+        settings.targetFps = parseInt(e.target.value);
         saveSettings();
     });
 

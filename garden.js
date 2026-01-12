@@ -25,8 +25,16 @@ let gardenSettings = {
     particlesEnabled: true,
     gardenName: 'My Digital Sanctuary',
     confettiEnabled: true,
-    blurTitles: false
+    blurTitles: false,
+    // Performance settings
+    performanceMode: 'full',
+    maxVisiblePlants: 50,
+    targetFps: 60
 };
+
+// FPS throttling
+let lastFrameTime = 0;
+const getFrameInterval = () => 1000 / gardenSettings.targetFps;
 
 // Wilt speed multipliers (hours until fully wilted)
 const WILT_SPEEDS = {
@@ -1413,12 +1421,79 @@ function calculateHealthFromActivity(lastActiveTime) {
     }
 }
 
+// Flower variety - 5 types with different colors and shapes
+const FLOWER_TYPES = {
+    lily: {
+        name: 'lily',
+        petalCount: 6,
+        petalShape: 'curved',
+        colors: { bloom: '#FFB7C5', accent: '#FF8FA3', center: '#FFD700' }
+    },
+    rose: {
+        name: 'rose',
+        petalCount: 8,
+        petalShape: 'round',
+        colors: { bloom: '#FF6B6B', accent: '#FF4757', center: '#FFE66D' }
+    },
+    sunflower: {
+        name: 'sunflower',
+        petalCount: 12,
+        petalShape: 'long',
+        colors: { bloom: '#FFD93D', accent: '#FF9F1C', center: '#6B4423' }
+    },
+    daisy: {
+        name: 'daisy',
+        petalCount: 10,
+        petalShape: 'thin',
+        colors: { bloom: '#FFFFFF', accent: '#F0F0F0', center: '#FFD700' }
+    },
+    tulip: {
+        name: 'tulip',
+        petalCount: 4,
+        petalShape: 'cup',
+        colors: { bloom: '#9B59B6', accent: '#8E44AD', center: '#F1C40F' }
+    }
+};
+
+// Domain categories for flower assignment
+function getFlowerTypeForUrl(url) {
+    try {
+        const hostname = new URL(url).hostname.toLowerCase();
+
+        // Social media → Rose (passionate, expressive)
+        if (/facebook|twitter|instagram|tiktok|reddit|discord|linkedin/i.test(hostname)) {
+            return FLOWER_TYPES.rose;
+        }
+        // News/Media → Sunflower (bright, informative)
+        if (/news|bbc|cnn|nytimes|guardian|medium|substack/i.test(hostname)) {
+            return FLOWER_TYPES.sunflower;
+        }
+        // Work/Productivity → Lily (elegant, professional)
+        if (/github|gitlab|jira|slack|notion|figma|google|docs|sheets/i.test(hostname)) {
+            return FLOWER_TYPES.lily;
+        }
+        // Entertainment → Tulip (colorful, fun)
+        if (/youtube|netflix|spotify|twitch|hulu|disney/i.test(hostname)) {
+            return FLOWER_TYPES.tulip;
+        }
+        // Default → Daisy (simple, versatile)
+        return FLOWER_TYPES.daisy;
+    } catch {
+        // Random fallback
+        const types = Object.values(FLOWER_TYPES);
+        return types[Math.floor(Math.random() * types.length)];
+    }
+}
+
 class Plant {
     constructor(tab, lastActiveTime) {
         this.tabId = tab.id;
         this.tab = tab; // Store full tab reference
         this.title = tab.title;
         this.url = tab.url;
+
+        // Assign flower type based on domain
+        this.flowerType = getFlowerTypeForUrl(tab.url || '');
         this.x = 0;
         this.y = 0;
         this.element = null; // DOM element reference
@@ -1666,12 +1741,16 @@ class Plant {
         ctx.save();
         ctx.rotate(angle);
 
-        // Create petal gradient
+        // Use flower type colors
+        const bloomColor = this.flowerType?.colors?.bloom || COLORS.petalPink;
+        const accentColor = this.flowerType?.colors?.accent || COLORS.petalDeep;
+
+        // Create petal gradient with flower-specific colors
         const gradient = ctx.createLinearGradient(0, 0, 0, -length);
-        gradient.addColorStop(0, COLORS.petalDeep);
-        gradient.addColorStop(0.3, COLORS.petalPink);
+        gradient.addColorStop(0, accentColor);
+        gradient.addColorStop(0.3, bloomColor);
         gradient.addColorStop(0.7, COLORS.petalWhite);
-        gradient.addColorStop(1, isBack ? COLORS.petalPink : COLORS.petalWhite);
+        gradient.addColorStop(1, isBack ? bloomColor : COLORS.petalWhite);
 
         // Draw recurved petal shape
         ctx.beginPath();
@@ -1727,10 +1806,12 @@ class Plant {
 
     // Draw stamens with anthers
     drawStamens(ctx) {
-        const stamenCount = 6;
-        for (let i = 0; i < stamenCount; i++) {
+        const stamenCount = this.flowerType?.petalCount || 6;
+        const centerColor = this.flowerType?.colors?.center || COLORS.anther;
+
+        for (let i = 0; i < Math.min(stamenCount, 6); i++) {
             const angle = (i * Math.PI * 2 / stamenCount) + Math.PI / 6;
-            const length = this.stamenLengths[i]; // Use pre-generated length
+            const length = this.stamenLengths[i] || 7; // Use pre-generated length
 
             ctx.save();
             ctx.rotate(angle);
@@ -1743,8 +1824,8 @@ class Plant {
             ctx.lineTo(0, -length);
             ctx.stroke();
 
-            // Anther (pollen holder)
-            ctx.fillStyle = COLORS.anther;
+            // Anther (pollen holder) with flower-specific center color
+            ctx.fillStyle = centerColor;
             ctx.beginPath();
             ctx.ellipse(0, -length - 1.5, 1, 2, 0, 0, Math.PI * 2);
             ctx.fill();
@@ -2101,43 +2182,64 @@ function setupQuickActions() {
     }
 }
 
-function loop() {
+function loop(timestamp) {
+    // FPS throttling
+    const frameInterval = getFrameInterval();
+    if (timestamp - lastFrameTime < frameInterval) {
+        requestAnimationFrame(loop);
+        return;
+    }
+    lastFrameTime = timestamp;
+
     frameCount++;
+    const perfMode = gardenSettings.performanceMode;
+    const showParticles = perfMode === 'full' || perfMode === 'balanced';
+    const showButterflies = perfMode === 'full';
 
     // Draw beautiful background (sunset gradient, light pools, vignette)
     drawBackground();
 
-    // Summer: Draw pulsing sun rays
-    if (getCurrentSeason() === 'summer') {
+    // Summer: Draw pulsing sun rays (skip in lite mode)
+    if (showParticles && getCurrentSeason() === 'summer') {
         drawSunRays(ctx);
     }
 
-    // Draw soft clouds drifting across sky
-    clouds.forEach(cloud => {
-        cloud.update();
-        cloud.draw(ctx);
-    });
+    // Draw soft clouds drifting across sky (skip in lite mode)
+    if (showParticles) {
+        clouds.forEach(cloud => {
+            cloud.update();
+            cloud.draw(ctx);
+        });
+    }
 
-    // Draw ambient particles (fireflies) behind plants
-    ambientParticles.forEach(particle => {
-        particle.update();
-        particle.draw(ctx);
-    });
+    // Draw ambient particles (fireflies) behind plants (skip in lite/balanced)
+    if (showButterflies) {
+        ambientParticles.forEach(particle => {
+            particle.update();
+            particle.draw(ctx);
+        });
+    }
 
-    // Draw butterflies behind plants
-    butterflies.forEach(butterfly => {
-        butterfly.update();
-        butterfly.draw(ctx);
-    });
+    // Draw butterflies behind plants (full mode only)
+    if (showButterflies) {
+        butterflies.forEach(butterfly => {
+            butterfly.update();
+            butterfly.draw(ctx);
+        });
+    }
 
     // Draw seasonal particles (autumn leaves, winter snowflakes)
-    seasonalParticles.forEach(particle => {
-        particle.update();
-        particle.draw(ctx);
-    });
+    if (showParticles) {
+        seasonalParticles.forEach(particle => {
+            particle.update();
+            particle.draw(ctx);
+        });
+    }
 
-    // Draw plants
-    plants.forEach(plant => {
+    // Draw plants (respect maxVisiblePlants)
+    const maxPlants = gardenSettings.maxVisiblePlants || plants.length;
+    const visiblePlants = maxPlants > 0 ? plants.slice(0, maxPlants) : plants;
+    visiblePlants.forEach(plant => {
         plant.update();
         plant.draw();
     });

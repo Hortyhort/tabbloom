@@ -126,6 +126,49 @@
         </div>
       </section>
 
+      <!-- Performance -->
+      <section class="settings-section">
+        <h2><span class="section-icon">⚡</span> Performance</h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="performanceMode">Performance Mode</label>
+            <p class="setting-description">Reduce effects for smoother experience with many tabs</p>
+          </div>
+          <select id="performanceMode">
+            <option value="full" selected>Full (all effects)</option>
+            <option value="balanced">Balanced (reduced particles)</option>
+            <option value="lite">Lite (minimal effects)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="maxVisiblePlants">Max Visible Plants</label>
+            <p class="setting-description">Limit plants shown (others in compost)</p>
+          </div>
+          <select id="maxVisiblePlants">
+            <option value="30">30 plants</option>
+            <option value="50" selected>50 plants</option>
+            <option value="75">75 plants</option>
+            <option value="100">100 plants</option>
+            <option value="0">Unlimited</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="targetFps">Animation Quality</label>
+            <p class="setting-description">Lower for better battery life</p>
+          </div>
+          <select id="targetFps">
+            <option value="60" selected>Smooth (60 fps)</option>
+            <option value="30">Balanced (30 fps)</option>
+            <option value="15">Battery Saver (15 fps)</option>
+          </select>
+        </div>
+      </section>
+
       <!-- Personalization -->
       <section class="settings-section">
         <h2><span class="section-icon">✨</span> Personalization</h2>
