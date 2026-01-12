@@ -1970,31 +1970,18 @@ canvas.addEventListener('mousemove', (e) => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Check if mouse is over a plant
+    // Track hovered plant for canvas rendering effects only
+    // (DOM plant elements handle cursor and tooltip via their own mouseenter/mouseleave)
     hoveredPlant = null;
     plants.forEach(p => {
         if (Math.hypot(mouseX - p.x, mouseY - p.y) < 40) {
             hoveredPlant = p;
         }
     });
-
-    // Update cursor and tooltip
-    if (hoveredPlant) {
-        canvas.style.cursor = 'pointer';
-        tooltip.style.left = `${mouseX + 15}px`;
-        tooltip.style.top = `${mouseY - 40}px`;
-        tooltip.innerHTML = `<strong>${hoveredPlant.title}</strong><br><span style="font-size:10px; opacity:0.7">${new URL(hoveredPlant.url).hostname}</span>`;
-        tooltip.classList.remove('hidden');
-    } else {
-        canvas.style.cursor = 'default';
-        tooltip.classList.add('hidden');
-    }
 });
 
 canvas.addEventListener('mouseleave', () => {
     hoveredPlant = null;
-    tooltip.classList.add('hidden');
-    canvas.style.cursor = 'default';
 });
 
 // Canvas click handler for harvesting plants
