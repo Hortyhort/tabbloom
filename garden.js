@@ -448,38 +448,45 @@ canvas.addEventListener('mouseleave', () => {
 });
 
 // Canvas click handler for harvesting plants
-canvas.addEventListener('click', (e) => {
+canvas.addEventListener('click', async (e) => {
     const rect = canvas.getBoundingClientRect();
     const clickX = e.clientX - rect.left;
     const clickY = e.clientY - rect.top;
 
-    // Find the closest plant to the click
+    // Find closest plant
     let closestPlant = null;
     let minDist = Infinity;
     plants.forEach(plant => {
         const dist = Math.hypot(clickX - plant.x, clickY - plant.y);
-        if (dist < 50 && dist < minDist) { // hit radius + buffer
+        if (dist < 50 + 30 && dist < minDist) { // generous hit area
             minDist = dist;
             closestPlant = plant;
         }
     });
 
     if (closestPlant) {
-        // Harvest: close the tab
-        chrome.tabs.remove(closestPlant.tabId, () => {
-            // Spawn particles AT THE FLOWER'S CENTER
-            bloomParticles(closestPlant.x, closestPlant.y);
-            AudioSystem.playHarvestChime();
-            // Remove DOM element if exists
+        // 1. Spawn particles IMMEDIATELY at current (live) position
+        bloomParticles(closestPlant.x, closestPlant.y, 25); // bigger burst for satisfaction
+        AudioSystem.playHarvestChime();
+
+        // 2. Now close the real tab (async)
+        try {
+            await chrome.tabs.remove(closestPlant.tab.id);
+
+            // 3. Remove DOM element if exists
             if (closestPlant.element) {
                 closestPlant.element.remove();
             }
-            // Remove from array & relayout
+
+            // 4. Remove from plants array and relayout
             plants = plants.filter(p => p !== closestPlant);
             layoutPlants();
-            updateCoins(10); // reward
+
+            updateCoins(10);
             updateStatsDisplay();
-        });
+        } catch (err) {
+            console.error("Failed to close tab:", err);
+        }
     }
 });
 
