@@ -1038,45 +1038,68 @@ const AudioSystem = {
     },
 
     // ==========================================
-    // WHISPER-SOFT HOVER
+    // WHISPER-SOFT HOVER (Peaceful breath)
     // ==========================================
 
-    playHoverSoft() {
+    lastHoverTime: 0,
+    lastHoveredId: null,
+
+    playHoverSoft(plantId = null) {
         if (!this.isEnabled()) return;
+
+        // Prevent rapid re-triggering - only play once per plant, with 300ms cooldown
+        const now = Date.now();
+        if (plantId !== null) {
+            if (plantId === this.lastHoveredId && now - this.lastHoverTime < 500) return;
+            this.lastHoveredId = plantId;
+        } else {
+            if (now - this.lastHoverTime < 300) return;
+        }
+        this.lastHoverTime = now;
+
         this.ensureContext();
 
-        if (this.playSample('hover', 0.3)) return;
+        if (this.playSample('hover', 0.2)) return;
 
         const vol = this.getVolume();
-        const now = this.ctx.currentTime;
+        const ctxNow = this.ctx.currentTime;
 
-        // Ethereal rising tone - barely audible
-        const osc = this.ctx.createOscillator();
-        const osc2 = this.ctx.createOscillator();
+        // Peaceful breath - soft filtered noise like a gentle sigh
+        const duration = 0.2;
+        const sampleRate = this.ctx.sampleRate;
+        const bufferSize = sampleRate * duration;
+        const buffer = this.ctx.createBuffer(2, bufferSize, sampleRate);
+
+        for (let channel = 0; channel < 2; channel++) {
+            const data = buffer.getChannelData(channel);
+            for (let i = 0; i < bufferSize; i++) {
+                const t = i / bufferSize;
+                // Very soft breath envelope - quick fade in, gentle fade out
+                const env = Math.sin(Math.PI * t) * Math.pow(1 - t, 0.5);
+                // Gentle noise with slight tone
+                const noise = (Math.random() * 2 - 1) * 0.3;
+                const tone = Math.sin(2 * Math.PI * 400 * t / sampleRate) * 0.1;
+                data[i] = (noise + tone) * env * 0.08;
+            }
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+
+        // Soft lowpass for warmth
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 800;
+        filter.Q.value = 0.5;
+
         const gain = this.ctx.createGain();
+        gain.gain.value = 0.15 * vol; // Very quiet
 
-        // Two slightly detuned oscillators for shimmer
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(800, now);
-        osc.frequency.exponentialRampToValueAtTime(1000, now + 0.12);
-
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(803, now);
-        osc2.frequency.exponentialRampToValueAtTime(1006, now + 0.12);
-
-        // Very soft envelope
-        gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.012 * vol, now + 0.02);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
-
-        osc.connect(gain);
-        osc2.connect(gain);
+        source.connect(filter);
+        filter.connect(gain);
         gain.connect(this.masterGain);
 
-        osc.start(now);
-        osc2.start(now);
-        osc.stop(now + 0.12);
-        osc2.stop(now + 0.12);
+        source.start();
     },
 
     // ==========================================
@@ -1808,7 +1831,7 @@ function createPlantElement(tab, x, y, plantIndex = 0) {
     plant.style.setProperty('--plant-index', plantIndex);
 
     plant.addEventListener('mouseenter', () => {
-        AudioSystem.playHoverSoft();
+        AudioSystem.playHoverSoft(tab.id); // Pass plant ID to prevent repeated sounds
         // Apply magical hover animation with warm glow
         plant.style.animation = 'magicalPulse 1.5s infinite ease-in-out';
         plant.style.transform = 'scale(1.4) rotate(5deg) translateY(-12px)';
