@@ -1131,6 +1131,7 @@ function createPlantElement(tab, x, y, plantIndex = 0) {
             plants = plants.filter(p => p.tabId !== tab.id);
             layoutPlants();
             updateCoins(10); // Reward for harvesting
+            recordHarvest(1, 10); // Track individual harvest
         } catch (err) {
             console.error("Failed to close tab:", err);
         }
@@ -1265,6 +1266,7 @@ canvas.addEventListener('click', async (e) => {
             layoutPlants();
 
             updateCoins(10);
+            recordHarvest(1, 10); // Track individual harvest
             updateStatsDisplay();
         } catch (err) {
             console.error("Failed to close tab:", err);
@@ -1800,6 +1802,15 @@ async function initGarden() {
         shareSettingsBtn.addEventListener('click', showShareSettingsPanel);
     }
 
+    // Set up Garden Stats button
+    const statsBtn = document.getElementById('statsBtn');
+    if (statsBtn) {
+        statsBtn.addEventListener('click', showGardenStats);
+    }
+
+    // Load garden stats for tracking
+    await loadGardenStats();
+
     // Set up onboarding
     setupOnboarding();
     await checkOnboarding();
@@ -1891,7 +1902,11 @@ async function harvestDormantTabs() {
     layoutPlants();
 
     // Award coins for batch harvest (bonus for efficiency!)
-    updateCoins(harvestedCount * 15);
+    const coinsEarned = harvestedCount * 15;
+    updateCoins(coinsEarned);
+
+    // Record stats for lifetime tracking
+    recordHarvest(harvestedCount, coinsEarned);
 
     // Update stats
     updateStatsDisplay();
@@ -2178,6 +2193,167 @@ async function showWelcomeTooltip() {
         `;
         document.head.appendChild(style);
     }
+}
+
+// ============================================
+// Garden Stats (Lifetime Tracking)
+// ============================================
+let gardenStats = {
+    totalHarvested: 0,
+    coinsEarned: 0,
+    gardenCreated: Date.now(),
+    seasonVisits: { spring: 0, summer: 0, autumn: 0, winter: 0 },
+    longestStreak: 0,
+    currentStreak: 0,
+    lastVisit: Date.now()
+};
+
+async function loadGardenStats() {
+    const result = await chrome.storage.local.get(['gardenStats']);
+    if (result.gardenStats) {
+        gardenStats = { ...gardenStats, ...result.gardenStats };
+    }
+
+    // Update season visit
+    const season = getCurrentSeason();
+    gardenStats.seasonVisits[season] = (gardenStats.seasonVisits[season] || 0) + 1;
+
+    // Check streak
+    const now = Date.now();
+    const daysSinceLastVisit = (now - gardenStats.lastVisit) / (1000 * 60 * 60 * 24);
+    if (daysSinceLastVisit < 2) {
+        gardenStats.currentStreak++;
+        if (gardenStats.currentStreak > gardenStats.longestStreak) {
+            gardenStats.longestStreak = gardenStats.currentStreak;
+        }
+    } else if (daysSinceLastVisit >= 2) {
+        gardenStats.currentStreak = 1;
+    }
+    gardenStats.lastVisit = now;
+
+    saveGardenStats();
+}
+
+function saveGardenStats() {
+    chrome.storage.local.set({ gardenStats });
+}
+
+function recordHarvest(count = 1, coins = 10) {
+    gardenStats.totalHarvested += count;
+    gardenStats.coinsEarned += coins;
+    saveGardenStats();
+}
+
+function getFavoriteSeason() {
+    const visits = gardenStats.seasonVisits;
+    let maxSeason = 'spring';
+    let maxVisits = 0;
+    for (const [season, count] of Object.entries(visits)) {
+        if (count > maxVisits) {
+            maxVisits = count;
+            maxSeason = season;
+        }
+    }
+    return maxSeason;
+}
+
+function getGardenAge() {
+    const days = Math.floor((Date.now() - gardenStats.gardenCreated) / (1000 * 60 * 60 * 24));
+    if (days === 0) return 'Brand new!';
+    if (days === 1) return '1 day old';
+    if (days < 7) return `${days} days old`;
+    if (days < 30) return `${Math.floor(days / 7)} weeks old`;
+    if (days < 365) return `${Math.floor(days / 30)} months old`;
+    return `${Math.floor(days / 365)} years old`;
+}
+
+function showGardenStats() {
+    // Remove existing panel if open
+    const existing = document.getElementById('garden-stats-panel');
+    if (existing) {
+        existing.remove();
+        return;
+    }
+
+    const favSeason = getFavoriteSeason();
+    const seasonEmojis = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
+    const seasonNames = { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' };
+
+    const panel = document.createElement('div');
+    panel.id = 'garden-stats-panel';
+    panel.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
+        padding: 20px 24px;
+        border-radius: 16px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+        z-index: 10000;
+        min-width: 260px;
+        pointer-events: auto;
+    `;
+
+    // Title
+    const title = document.createElement('div');
+    title.style.cssText = 'font-weight: 700; color: #5D7A4A; margin-bottom: 16px; font-size: 16px; text-align: center;';
+    title.textContent = '🌿 Garden Stats';
+
+    // Stats grid
+    const statsGrid = document.createElement('div');
+    statsGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px;';
+
+    const statItems = [
+        { label: 'Harvested', value: gardenStats.totalHarvested, emoji: '🌾' },
+        { label: 'Coins Earned', value: gardenStats.coinsEarned, emoji: '✨' },
+        { label: 'Garden Age', value: getGardenAge(), emoji: '🌱' },
+        { label: 'Day Streak', value: `${gardenStats.currentStreak} days`, emoji: '🔥' },
+        { label: 'Best Streak', value: `${gardenStats.longestStreak} days`, emoji: '🏆' },
+        { label: 'Favorite Season', value: `${seasonEmojis[favSeason]} ${seasonNames[favSeason]}`, emoji: '' },
+    ];
+
+    statItems.forEach(stat => {
+        const item = document.createElement('div');
+        item.style.cssText = `
+            background: rgba(255,255,255,0.6);
+            padding: 10px;
+            border-radius: 10px;
+            text-align: center;
+        `;
+        item.innerHTML = `
+            <div style="font-size: 18px; font-weight: 700; color: #5D7A4A;">${stat.emoji} ${stat.value}</div>
+            <div style="font-size: 11px; color: #7A6B5A; margin-top: 2px;">${stat.label}</div>
+        `;
+        statsGrid.appendChild(item);
+    });
+
+    // Close button
+    const closeBtn = document.createElement('button');
+    closeBtn.style.cssText = `
+        margin-top: 16px;
+        width: 100%;
+        background: #5D7A4A;
+        color: white;
+        border: none;
+        padding: 10px;
+        border-radius: 10px;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 600;
+    `;
+    closeBtn.textContent = 'Close';
+    closeBtn.addEventListener('click', () => panel.remove());
+
+    // Assemble
+    panel.appendChild(title);
+    panel.appendChild(statsGrid);
+    panel.appendChild(closeBtn);
+
+    document.body.appendChild(panel);
+
+    // Play a soft sound
+    AudioSystem.playHoverSoft();
 }
 
 // ============================================
