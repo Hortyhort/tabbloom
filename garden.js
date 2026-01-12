@@ -389,7 +389,7 @@ function createPlantElement(tab, x, y) {
 }
 
 // Canvas-based particle burst effect when harvesting
-function bloomParticles(x, y, count = 20) {
+function bloomParticles(x, y, count = 30) {
     for (let i = 0; i < count; i++) {
         particles.push({
             x: x,              // center of clicked flower
@@ -465,8 +465,14 @@ canvas.addEventListener('click', async (e) => {
     });
 
     if (closestPlant) {
+        // 0. Quick scale flash for punchy feedback
+        if (closestPlant.element) {
+            closestPlant.element.style.transform = 'scale(1.3)';
+            closestPlant.element.style.transition = 'transform 0.1s ease-out';
+        }
+
         // 1. Spawn particles IMMEDIATELY at current (live) position
-        bloomParticles(closestPlant.x, closestPlant.y, 25); // bigger burst for satisfaction
+        bloomParticles(closestPlant.x, closestPlant.y, 30); // bigger burst for satisfaction
         AudioSystem.playHarvestChime();
 
         // 2. Now close the real tab (async)
@@ -1006,7 +1012,7 @@ function loop() {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += p.isSparkle ? 0.02 : 0.12; // gentle downward drift after burst
+        p.vy += p.isSparkle ? 0.02 : 0.15; // stronger gravity for nice arc
         p.life--;
 
         if (p.life <= 0) {
@@ -1015,7 +1021,7 @@ function loop() {
         }
 
         const maxLife = p.isSparkle ? 40 : 90;
-        ctx.globalAlpha = p.life / maxLife;
+        ctx.globalAlpha = p.isSparkle ? p.life / maxLife : Math.pow(p.life / maxLife, 1.5); // faster fade at end
 
         if (p.isSparkle) {
             // Twinkling sparkle effect
