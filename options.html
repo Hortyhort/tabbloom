@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>TabBloom Settings</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="options-container">
+    <header class="options-header">
+      <div class="logo">
+        <span class="logo-icon">🌸</span>
+        <h1>TabBloom Settings</h1>
+      </div>
+      <p class="subtitle">Customize your digital sanctuary</p>
+    </header>
+
+    <main class="options-content">
+      <!-- Sound Settings -->
+      <section class="settings-section">
+        <h2><span class="section-icon">🔊</span> Sound Settings</h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="soundEnabled">Enable Sounds</label>
+            <p class="setting-description">Play ASMR sounds for interactions</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="soundEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="masterVolume">Master Volume</label>
+            <p class="setting-description">Overall sound level</p>
+          </div>
+          <div class="slider-container">
+            <input type="range" id="masterVolume" min="0" max="100" value="70">
+            <span class="slider-value" id="volumeValue">70%</span>
+          </div>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="ambientEnabled">Ambient Soundscape</label>
+            <p class="setting-description">Seasonal background sounds (crickets, wind, etc.)</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="ambientEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Garden Behavior -->
+      <section class="settings-section">
+        <h2><span class="section-icon">🌱</span> Garden Behavior</h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="wiltSpeed">Wilt Speed</label>
+            <p class="setting-description">How quickly neglected tabs start wilting</p>
+          </div>
+          <select id="wiltSpeed">
+            <option value="slow">Slow (24 hours)</option>
+            <option value="normal" selected>Normal (12 hours)</option>
+            <option value="fast">Fast (6 hours)</option>
+            <option value="rapid">Rapid (2 hours)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="harvestCoins">Coins per Harvest</label>
+            <p class="setting-description">Reward for harvesting wilted tabs</p>
+          </div>
+          <select id="harvestCoins">
+            <option value="5">5 coins (minimal)</option>
+            <option value="10" selected>10 coins (default)</option>
+            <option value="15">15 coins (generous)</option>
+            <option value="25">25 coins (abundant)</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="animationsEnabled">Breathing Animations</label>
+            <p class="setting-description">Gentle sway and bob on all plants</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="animationsEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Seasonal Theme -->
+      <section class="settings-section">
+        <h2><span class="section-icon">🍂</span> Seasonal Theme</h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="seasonMode">Season Selection</label>
+            <p class="setting-description">Auto-detect or choose your favorite</p>
+          </div>
+          <select id="seasonMode">
+            <option value="auto" selected>Auto (based on date)</option>
+            <option value="spring">Spring 🌸</option>
+            <option value="summer">Summer ☀️</option>
+            <option value="autumn">Autumn 🍂</option>
+            <option value="winter">Winter ❄️</option>
+          </select>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="particlesEnabled">Seasonal Particles</label>
+            <p class="setting-description">Butterflies, leaves, snowflakes, sun rays</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="particlesEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Personalization -->
+      <section class="settings-section">
+        <h2><span class="section-icon">✨</span> Personalization</h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="gardenName">Garden Name</label>
+            <p class="setting-description">Your sanctuary's title</p>
+          </div>
+          <input type="text" id="gardenName" placeholder="My Digital Sanctuary" maxlength="30">
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="confettiEnabled">Harvest Confetti</label>
+            <p class="setting-description">Celebration effect when harvesting all</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="confettiEnabled" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Privacy & Data -->
+      <section class="settings-section">
+        <h2><span class="section-icon">🔒</span> Privacy & Data</h2>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label for="blurTitles">Blur Tab Titles in Screenshots</label>
+            <p class="setting-description">Hide sensitive tab names when sharing</p>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="blurTitles">
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Reset Garden Stats</label>
+            <p class="setting-description">Clear all lifetime statistics</p>
+          </div>
+          <button id="resetStats" class="btn-danger">Reset Stats</button>
+        </div>
+
+        <div class="setting-item">
+          <div class="setting-info">
+            <label>Export Data</label>
+            <p class="setting-description">Download your garden data as JSON</p>
+          </div>
+          <button id="exportData" class="btn-secondary">Export</button>
+        </div>
+      </section>
+    </main>
+
+    <footer class="options-footer">
+      <div class="footer-info">
+        <span>TabBloom v1.0.26</span>
+        <span class="separator">•</span>
+        <a href="https://github.com/your-repo/tabbloom" target="_blank">GitHub</a>
+        <span class="separator">•</span>
+        <a href="mailto:support@tabbloom.app">Support</a>
+      </div>
+      <div class="save-status" id="saveStatus">
+        <span class="status-icon">✓</span>
+        <span>Settings saved automatically</span>
+      </div>
+    </footer>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

@@ -13,6 +13,29 @@ let hoveredPlant = null;
 let currentCoins = 120; // Starting coins
 let frameCount = 0; // For animations
 
+// Global settings (loaded from options)
+let gardenSettings = {
+    soundEnabled: true,
+    masterVolume: 70,
+    ambientEnabled: true,
+    wiltSpeed: 'normal',
+    harvestCoins: 10,
+    animationsEnabled: true,
+    seasonMode: 'auto',
+    particlesEnabled: true,
+    gardenName: 'My Digital Sanctuary',
+    confettiEnabled: true,
+    blurTitles: false
+};
+
+// Wilt speed multipliers (hours until fully wilted)
+const WILT_SPEEDS = {
+    slow: 24,
+    normal: 12,
+    fast: 6,
+    rapid: 2
+};
+
 // ============================================
 // Soft Drifting Clouds
 // ============================================
@@ -501,9 +524,21 @@ const AudioSystem = {
         if (this.ctx.state === 'suspended') this.ctx.resume();
     },
 
+    // Check if sounds are enabled
+    isEnabled() {
+        return gardenSettings.soundEnabled;
+    },
+
+    // Get current volume multiplier (0-1)
+    getVolume() {
+        return gardenSettings.masterVolume / 100;
+    },
+
     // Gentle chime on harvest (high, pleasant note)
     playHarvestChime() {
+        if (!this.isEnabled()) return;
         this.ensureContext();
+        const vol = this.getVolume();
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
@@ -514,7 +549,7 @@ const AudioSystem = {
         osc.frequency.setValueAtTime(880, this.ctx.currentTime); // A5
         osc.frequency.exponentialRampToValueAtTime(1320, this.ctx.currentTime + 0.1); // E6
 
-        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.15 * vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.4);
 
         osc.start(this.ctx.currentTime);
@@ -527,7 +562,7 @@ const AudioSystem = {
         gain2.connect(this.ctx.destination);
         osc2.type = 'sine';
         osc2.frequency.setValueAtTime(1760, this.ctx.currentTime);
-        gain2.gain.setValueAtTime(0.05, this.ctx.currentTime);
+        gain2.gain.setValueAtTime(0.05 * vol, this.ctx.currentTime);
         gain2.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
         osc2.start(this.ctx.currentTime);
         osc2.stop(this.ctx.currentTime + 0.3);
@@ -535,7 +570,9 @@ const AudioSystem = {
 
     // Happy celebration chime for batch harvest
     playHarvestAllCelebration() {
+        if (!this.isEnabled()) return;
         this.ensureContext();
+        const vol = this.getVolume();
 
         // Ascending happy arpeggio (C-E-G-C)
         const notes = [523, 659, 784, 1047]; // C5, E5, G5, C6
@@ -550,7 +587,7 @@ const AudioSystem = {
             osc.frequency.setValueAtTime(freq, startTime);
 
             gain.gain.setValueAtTime(0, startTime);
-            gain.gain.linearRampToValueAtTime(0.12, startTime + 0.02);
+            gain.gain.linearRampToValueAtTime(0.12 * vol, startTime + 0.02);
             gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.3);
 
             osc.start(startTime);
@@ -564,7 +601,7 @@ const AudioSystem = {
         sparkleGain.connect(this.ctx.destination);
         sparkle.type = 'sine';
         sparkle.frequency.setValueAtTime(2093, this.ctx.currentTime + 0.3); // C7
-        sparkleGain.gain.setValueAtTime(0.04, this.ctx.currentTime + 0.3);
+        sparkleGain.gain.setValueAtTime(0.04 * vol, this.ctx.currentTime + 0.3);
         sparkleGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.6);
         sparkle.start(this.ctx.currentTime + 0.3);
         sparkle.stop(this.ctx.currentTime + 0.6);
@@ -572,6 +609,7 @@ const AudioSystem = {
 
     // Soft rustle on growth/refresh
     playGrowthRustle() {
+        if (!this.isEnabled()) return;
         this.ensureContext();
         const bufferSize = this.ctx.sampleRate * 0.15;
         const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
@@ -595,7 +633,8 @@ const AudioSystem = {
         filter.connect(gain);
         gain.connect(this.ctx.destination);
 
-        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        const vol = this.getVolume();
+        gain.gain.setValueAtTime(0.08 * vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.15);
 
         source.start();
@@ -603,7 +642,9 @@ const AudioSystem = {
 
     // Sad droop tone on wilt
     playWiltDroop() {
+        if (!this.isEnabled()) return;
         this.ensureContext();
+        const vol = this.getVolume();
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
@@ -614,7 +655,7 @@ const AudioSystem = {
         osc.frequency.setValueAtTime(440, this.ctx.currentTime); // A4
         osc.frequency.exponentialRampToValueAtTime(220, this.ctx.currentTime + 0.3); // Drop to A3
 
-        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.1 * vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
 
         osc.start(this.ctx.currentTime);
@@ -623,7 +664,9 @@ const AudioSystem = {
 
     // Soft hover sound
     playHoverSoft() {
+        if (!this.isEnabled()) return;
         this.ensureContext();
+        const vol = this.getVolume();
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
@@ -633,7 +676,7 @@ const AudioSystem = {
         osc.type = 'sine';
         osc.frequency.value = 600;
 
-        gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.03 * vol, this.ctx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
 
         osc.start(this.ctx.currentTime);
@@ -680,6 +723,7 @@ const AudioSystem = {
     // Start seasonal ambient soundscape (very quiet background)
     startAmbientSoundscape(season) {
         if (this.isAmbientPlaying) return;
+        if (!this.isEnabled() || !gardenSettings.ambientEnabled) return;
         this.ensureContext();
 
         // Create noise buffer for ambient sound
@@ -786,6 +830,11 @@ async function loadCoins() {
 // Seasonal Themes
 // ============================================
 function getCurrentSeason() {
+    // Check if user has a manual season preference
+    if (gardenSettings.seasonMode && gardenSettings.seasonMode !== 'auto') {
+        return gardenSettings.seasonMode;
+    }
+    // Auto-detect based on current month
     const month = new Date().getMonth();
     if (month >= 2 && month <= 4) return 'spring';
     if (month >= 5 && month <= 7) return 'summer';
@@ -1168,8 +1217,8 @@ function createPlantElement(tab, x, y, plantIndex = 0) {
             // Remove from plants array
             plants = plants.filter(p => p.tabId !== tab.id);
             layoutPlants();
-            updateCoins(10); // Reward for harvesting
-            recordHarvest(1, 10); // Track individual harvest
+            updateCoins(gardenSettings.harvestCoins); // Reward for harvesting
+            recordHarvest(1, gardenSettings.harvestCoins); // Track individual harvest
         } catch (err) {
             console.error("Failed to close tab:", err);
         }
@@ -1303,8 +1352,8 @@ canvas.addEventListener('click', async (e) => {
             plants = plants.filter(p => p !== closestPlant);
             layoutPlants();
 
-            updateCoins(10);
-            recordHarvest(1, 10); // Track individual harvest
+            updateCoins(gardenSettings.harvestCoins);
+            recordHarvest(1, gardenSettings.harvestCoins); // Track individual harvest
             updateStatsDisplay();
         } catch (err) {
             console.error("Failed to close tab:", err);
@@ -1799,7 +1848,31 @@ function setupTabListeners() {
     });
 }
 
+// Load user settings from storage
+async function loadGardenSettings() {
+    try {
+        const result = await chrome.storage.local.get(['tabbloomSettings']);
+        if (result.tabbloomSettings) {
+            gardenSettings = { ...gardenSettings, ...result.tabbloomSettings };
+        }
+        // Apply garden name
+        const nameEl = document.getElementById('gardenName');
+        if (nameEl && gardenSettings.gardenName) {
+            nameEl.textContent = gardenSettings.gardenName;
+        }
+        // Apply animation setting
+        if (!gardenSettings.animationsEnabled) {
+            document.documentElement.style.setProperty('--animation-state', 'paused');
+        }
+    } catch (err) {
+        console.log('Using default settings');
+    }
+}
+
 async function initGarden() {
+    // Load user settings first
+    await loadGardenSettings();
+
     // Apply seasonal theme
     applySeason();
 
@@ -1957,7 +2030,7 @@ async function harvestDormantTabs() {
         AudioSystem.playHarvestAllCelebration();
 
         // Trigger confetti burst (garden colors)
-        if (typeof confetti === 'function') {
+        if (gardenSettings.confettiEnabled && typeof confetti === 'function') {
             confetti({
                 particleCount: 80 + harvestedCount * 10,
                 spread: 70,

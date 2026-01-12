@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabBloom",
-  "version": "1.0.25",
+  "version": "1.0.26",
   "description": "Turn your tabs into a thriving digital garden — watch them bloom or wilt based on your browsing habits.",
   "icons": {
     "16": "icons/icon16.png",
@@ -27,6 +27,10 @@
   },
   "background": {
     "service_worker": "background.js"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
   },
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'"
