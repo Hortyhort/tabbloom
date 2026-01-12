@@ -1455,9 +1455,9 @@ function sparkleParticles(x, y) {
 // Update coin display
 function updateCoins(amount) {
     currentCoins += amount;
-    const coinDisplay = document.querySelector('.pill.coins');
+    const coinDisplay = document.getElementById('coinCount');
     if (coinDisplay) {
-        coinDisplay.textContent = `✨ ${currentCoins}`;
+        coinDisplay.textContent = currentCoins;
     }
     // Save to storage
     chrome.storage.local.set({ coins: currentCoins });
@@ -1500,17 +1500,8 @@ function applySeason() {
         body.classList.add(`season-${season}`);
     }
 
-    // Update season pill
-    const seasonPill = document.querySelector('.pill.season');
-    if (seasonPill) {
-        const seasonNames = {
-            spring: 'Spring',
-            summer: 'Summer',
-            autumn: 'Autumn',
-            winter: 'Winter'
-        };
-        seasonPill.textContent = seasonNames[season];
-    }
+    // Season is now shown implicitly through the garden visuals
+    // No separate season indicator needed in the new minimal UI
 }
 
 // ============================================
@@ -1984,6 +1975,114 @@ canvas.addEventListener('mouseleave', () => {
     hoveredPlant = null;
 });
 
+// ============================================
+// Keyboard Navigation (Accessibility)
+// ============================================
+let focusedPlantIndex = -1;
+
+document.addEventListener('keydown', (e) => {
+    // Only handle if garden is focused
+    const gardenContainer = document.getElementById('garden-container');
+    if (!gardenContainer || !gardenContainer.contains(document.activeElement) && document.activeElement !== document.body) {
+        return;
+    }
+
+    if (plants.length === 0) return;
+
+    switch (e.key) {
+        case 'ArrowRight':
+        case 'ArrowDown':
+            e.preventDefault();
+            focusedPlantIndex = (focusedPlantIndex + 1) % plants.length;
+            focusPlant(focusedPlantIndex);
+            break;
+        case 'ArrowLeft':
+        case 'ArrowUp':
+            e.preventDefault();
+            focusedPlantIndex = focusedPlantIndex <= 0 ? plants.length - 1 : focusedPlantIndex - 1;
+            focusPlant(focusedPlantIndex);
+            break;
+        case 'Enter':
+        case ' ':
+            e.preventDefault();
+            if (focusedPlantIndex >= 0 && focusedPlantIndex < plants.length) {
+                harvestPlantByIndex(focusedPlantIndex);
+            }
+            break;
+        case 'Escape':
+            focusedPlantIndex = -1;
+            clearPlantFocus();
+            break;
+    }
+});
+
+function focusPlant(index) {
+    if (index < 0 || index >= plants.length) return;
+
+    const plant = plants[index];
+    hoveredPlant = plant;
+
+    // Visual focus indicator
+    clearPlantFocus();
+    if (plant.element) {
+        plant.element.classList.add('keyboard-focused');
+        plant.element.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+
+    // Play gentle audio feedback
+    AudioSystem.playHoverSoft(plant.tabId);
+
+    // Update tooltip
+    showTooltip(plant);
+}
+
+function clearPlantFocus() {
+    document.querySelectorAll('.plant.keyboard-focused').forEach(el => {
+        el.classList.remove('keyboard-focused');
+    });
+    hoveredPlant = null;
+    tooltip.classList.add('hidden');
+}
+
+async function harvestPlantByIndex(index) {
+    if (index < 0 || index >= plants.length) return;
+
+    const plant = plants[index];
+    bloomParticles(plant.x, plant.y, 30);
+    AudioSystem.playHarvestChime();
+
+    try {
+        await chrome.tabs.remove(plant.tab.id);
+        if (plant.element) plant.element.remove();
+        plants = plants.filter(p => p !== plant);
+        layoutPlants();
+        updateCoins(gardenSettings.harvestCoins);
+        recordHarvest(1, gardenSettings.harvestCoins);
+        updateStatsDisplay();
+
+        // Adjust focus index
+        focusedPlantIndex = Math.min(focusedPlantIndex, plants.length - 1);
+        if (plants.length > 0 && focusedPlantIndex >= 0) {
+            focusPlant(focusedPlantIndex);
+        }
+    } catch (err) {
+        console.error("Failed to close tab:", err);
+    }
+}
+
+function showTooltip(plant) {
+    const gardenContainer = document.getElementById('garden-container');
+    if (!gardenContainer) return;
+
+    tooltip.innerHTML = `
+        <strong style="color: var(--text-primary);">${plant.tab.title || 'Untitled'}</strong><br>
+        <span style="color: var(--text-secondary); font-size: 11px;">${new URL(plant.tab.url || 'about:blank').hostname}</span>
+    `;
+    tooltip.style.left = `${Math.min(plant.x + 20, gardenContainer.offsetWidth - 200)}px`;
+    tooltip.style.top = `${plant.y - 60}px`;
+    tooltip.classList.remove('hidden');
+}
+
 // Canvas click handler for harvesting plants
 canvas.addEventListener('click', async (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -2185,7 +2284,7 @@ class Plant {
         this.age = calculateHealthFromActivity(this.lastActiveTime);
         this.previousAge = this.age; // Track for animations
         this.sway = Math.random() * Math.PI * 2; // Random start phase
-        this.swaySpeed = 0.015 + Math.random() * 0.02; // Slower, more varied sway
+        this.swaySpeed = 0.008 + Math.random() * 0.01; // Subtle, restrained sway
 
         // Growth animation state
         this.growthScale = 1;
@@ -2254,7 +2353,7 @@ class Plant {
     }
 
     draw() {
-        const swayOffset = Math.sin(this.sway) * 4; // Slightly more sway
+        const swayOffset = Math.sin(this.sway) * 2; // Subtle sway
         const isHovered = this === hoveredPlant;
         const isWilted = this.age >= 0.7;
 
@@ -2665,28 +2764,18 @@ async function initGarden() {
         plant.element = createPlantElement(plant.tab, plant.x, plant.y, index);
     });
 
-    // Set up Harvest Dormant Tabs button
+    // Set up Harvest button
     const harvestBtn = document.getElementById('harvestAll');
     if (harvestBtn) {
         harvestBtn.addEventListener('click', harvestDormantTabs);
     }
 
-    // Set up Share button
-    const shareBtn = document.getElementById('shareBtn');
-    if (shareBtn) {
-        shareBtn.addEventListener('click', captureGardenScreenshot);
-    }
-
-    // Set up Share settings button
-    const shareSettingsBtn = document.getElementById('shareSettingsBtn');
-    if (shareSettingsBtn) {
-        shareSettingsBtn.addEventListener('click', showShareSettingsPanel);
-    }
-
-    // Set up Garden Stats button
-    const statsBtn = document.getElementById('statsBtn');
-    if (statsBtn) {
-        statsBtn.addEventListener('click', showGardenStats);
+    // Set up Settings button (opens options page)
+    const settingsBtn = document.getElementById('settingsBtn');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', () => {
+            chrome.runtime.openOptionsPage();
+        });
     }
 
     // Set up Quick Actions mini-bar
@@ -2742,14 +2831,21 @@ async function updateAllPlantHealth() {
     updateStatsDisplay();
 }
 
-// Update the stats text in footer
+// Update the stats display in header and footer
 function updateStatsDisplay() {
-    const statsText = document.querySelector('.stats-text');
-    if (statsText) {
-        const bloomingCount = plants.filter(p => p.age < 0.3).length;
-        const wiltedCount = plants.filter(p => p.age >= 0.7).length;
-        statsText.textContent = `${bloomingCount} blooming, ${wiltedCount} wilted of ${plants.length} tabs`;
-    }
+    const bloomingCount = plants.filter(p => p.age < 0.3).length;
+    const wiltedCount = plants.filter(p => p.age >= 0.7).length;
+
+    // Update stats bar
+    const healthyCountEl = document.getElementById('healthyCount');
+    const wiltingCountEl = document.getElementById('wiltingCount');
+    const subtitleEl = document.getElementById('gardenSubtitle');
+    const weeklyStatsEl = document.getElementById('weeklyStats');
+
+    if (healthyCountEl) healthyCountEl.textContent = bloomingCount;
+    if (wiltingCountEl) wiltingCountEl.textContent = wiltedCount;
+    if (subtitleEl) subtitleEl.textContent = `${plants.length} plants`;
+    if (weeklyStatsEl) weeklyStatsEl.textContent = `${bloomingCount} healthy, ${wiltedCount} wilting`;
 }
 
 // Harvest all wilted/dormant tabs
@@ -2815,15 +2911,14 @@ async function harvestDormantTabs() {
 
 // Set up Quick Actions mini-bar
 function setupQuickActions() {
-    const quickHarvest = document.getElementById('quickHarvest');
+    const quickStats = document.getElementById('quickStats');
     const quickRefresh = document.getElementById('quickRefresh');
     const quickShare = document.getElementById('quickShare');
-    const quickSettings = document.getElementById('quickSettings');
 
-    if (quickHarvest) {
-        quickHarvest.addEventListener('click', () => {
+    if (quickStats) {
+        quickStats.addEventListener('click', () => {
             AudioSystem.playHoverSoft();
-            harvestDormantTabs();
+            showGardenStats();
         });
     }
 
@@ -2860,13 +2955,6 @@ function setupQuickActions() {
         quickShare.addEventListener('click', () => {
             AudioSystem.playHoverSoft();
             captureGardenScreenshot();
-        });
-    }
-
-    if (quickSettings) {
-        quickSettings.addEventListener('click', () => {
-            AudioSystem.playHoverSoft();
-            showShareSettingsPanel();
         });
     }
 }

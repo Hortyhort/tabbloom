@@ -1,69 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TabBloom Settings</title>
+  <link rel="stylesheet" href="design-tokens.css">
   <link rel="stylesheet" href="options.css">
 </head>
 <body>
   <div class="options-container">
     <header class="options-header">
       <div class="logo">
-        <span class="logo-icon">🌸</span>
-        <h1>TabBloom Settings</h1>
+        <span class="logo-icon" id="logoIcon" aria-hidden="true"></span>
+        <h1>TabBloom</h1>
       </div>
-      <p class="subtitle">Customize your digital sanctuary</p>
+      <p class="subtitle">Settings</p>
     </header>
 
     <main class="options-content">
       <!-- Sound Settings -->
-      <section class="settings-section">
-        <h2><span class="section-icon">🔊</span> Sound Settings</h2>
+      <section class="settings-section" aria-labelledby="sound-heading">
+        <h2 id="sound-heading" class="section-header">
+          <span class="section-icon" id="soundIcon" aria-hidden="true"></span>
+          <span>Sound</span>
+        </h2>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="soundEnabled">Enable Sounds</label>
-            <p class="setting-description">Play ASMR sounds for interactions</p>
+            <label for="soundEnabled" class="setting-label">Enable Sounds</label>
+            <p class="setting-description">Play ambient sounds for interactions</p>
           </div>
           <label class="toggle">
-            <input type="checkbox" id="soundEnabled" checked>
-            <span class="toggle-slider"></span>
+            <input type="checkbox" id="soundEnabled" checked aria-describedby="sound-desc">
+            <span class="toggle-slider" aria-hidden="true"></span>
+            <span class="sr-only">Enable sounds</span>
           </label>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="masterVolume">Master Volume</label>
+            <label for="masterVolume" class="setting-label">Master Volume</label>
             <p class="setting-description">Overall sound level</p>
           </div>
           <div class="slider-container">
-            <input type="range" id="masterVolume" min="0" max="100" value="70">
-            <span class="slider-value" id="volumeValue">70%</span>
+            <input type="range" id="masterVolume" min="0" max="100" value="70" aria-valuemin="0" aria-valuemax="100" aria-valuenow="70">
+            <span class="slider-value" id="volumeValue" aria-live="polite">70%</span>
           </div>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="ambientEnabled">Ambient Soundscape</label>
-            <p class="setting-description">Seasonal background sounds (crickets, wind, etc.)</p>
+            <label for="ambientEnabled" class="setting-label">Ambient Soundscape</label>
+            <p class="setting-description">Seasonal background sounds</p>
           </div>
           <label class="toggle">
             <input type="checkbox" id="ambientEnabled" checked>
-            <span class="toggle-slider"></span>
+            <span class="toggle-slider" aria-hidden="true"></span>
+            <span class="sr-only">Enable ambient soundscape</span>
           </label>
         </div>
       </section>
 
       <!-- Garden Behavior -->
-      <section class="settings-section">
-        <h2><span class="section-icon">🌱</span> Garden Behavior</h2>
+      <section class="settings-section" aria-labelledby="garden-heading">
+        <h2 id="garden-heading" class="section-header">
+          <span class="section-icon" id="gardenIcon" aria-hidden="true"></span>
+          <span>Garden</span>
+        </h2>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="wiltSpeed">Wilt Speed</label>
+            <label for="wiltSpeed" class="setting-label">Wilt Speed</label>
             <p class="setting-description">How quickly neglected tabs start wilting</p>
           </div>
-          <select id="wiltSpeed">
+          <select id="wiltSpeed" aria-label="Wilt speed">
             <option value="slow">Slow (24 hours)</option>
             <option value="normal" selected>Normal (12 hours)</option>
             <option value="fast">Fast (6 hours)</option>
@@ -73,92 +83,101 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="harvestCoins">Coins per Harvest</label>
+            <label for="harvestCoins" class="setting-label">Coins per Harvest</label>
             <p class="setting-description">Reward for harvesting wilted tabs</p>
           </div>
-          <select id="harvestCoins">
-            <option value="5">5 coins (minimal)</option>
-            <option value="10" selected>10 coins (default)</option>
-            <option value="15">15 coins (generous)</option>
-            <option value="25">25 coins (abundant)</option>
+          <select id="harvestCoins" aria-label="Coins per harvest">
+            <option value="5">5 coins</option>
+            <option value="10" selected>10 coins</option>
+            <option value="15">15 coins</option>
+            <option value="25">25 coins</option>
           </select>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="animationsEnabled">Breathing Animations</label>
-            <p class="setting-description">Gentle sway and bob on all plants</p>
+            <label for="animationsEnabled" class="setting-label">Plant Animations</label>
+            <p class="setting-description">Gentle sway on all plants</p>
           </div>
           <label class="toggle">
             <input type="checkbox" id="animationsEnabled" checked>
-            <span class="toggle-slider"></span>
+            <span class="toggle-slider" aria-hidden="true"></span>
+            <span class="sr-only">Enable plant animations</span>
           </label>
         </div>
       </section>
 
       <!-- Seasonal Theme -->
-      <section class="settings-section">
-        <h2><span class="section-icon">🍂</span> Seasonal Theme</h2>
+      <section class="settings-section" aria-labelledby="season-heading">
+        <h2 id="season-heading" class="section-header">
+          <span class="section-icon" id="seasonIcon" aria-hidden="true"></span>
+          <span>Season</span>
+        </h2>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="seasonMode">Season Selection</label>
+            <label for="seasonMode" class="setting-label">Season Selection</label>
             <p class="setting-description">Auto-detect or choose your favorite</p>
           </div>
-          <select id="seasonMode">
+          <select id="seasonMode" aria-label="Season selection">
             <option value="auto" selected>Auto (based on date)</option>
-            <option value="spring">Spring 🌸</option>
-            <option value="summer">Summer ☀️</option>
-            <option value="autumn">Autumn 🍂</option>
-            <option value="winter">Winter ❄️</option>
+            <option value="spring">Spring</option>
+            <option value="summer">Summer</option>
+            <option value="autumn">Autumn</option>
+            <option value="winter">Winter</option>
           </select>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="particlesEnabled">Seasonal Particles</label>
-            <p class="setting-description">Butterflies, leaves, snowflakes, sun rays</p>
+            <label for="particlesEnabled" class="setting-label">Seasonal Particles</label>
+            <p class="setting-description">Butterflies, leaves, snowflakes</p>
           </div>
           <label class="toggle">
             <input type="checkbox" id="particlesEnabled" checked>
-            <span class="toggle-slider"></span>
+            <span class="toggle-slider" aria-hidden="true"></span>
+            <span class="sr-only">Enable seasonal particles</span>
           </label>
         </div>
       </section>
 
       <!-- Performance -->
-      <section class="settings-section">
-        <h2><span class="section-icon">⚡</span> Performance</h2>
+      <section class="settings-section" aria-labelledby="performance-heading">
+        <h2 id="performance-heading" class="section-header">
+          <span class="section-icon" id="perfIcon" aria-hidden="true"></span>
+          <span>Performance</span>
+        </h2>
 
-        <div class="setting-item" style="background: linear-gradient(135deg, rgba(255,240,230,0.5), rgba(255,220,200,0.3)); border-radius: 10px; padding: 12px; margin: -8px; margin-bottom: 8px;">
+        <div class="setting-item setting-item--highlighted">
           <div class="setting-info">
-            <label for="minimalMode">Minimal Mode</label>
-            <p class="setting-description">Zero flair – disable all animations, sounds, and extras</p>
+            <label for="minimalMode" class="setting-label">Minimal Mode</label>
+            <p class="setting-description">Disable all animations, sounds, and extras</p>
           </div>
           <label class="toggle">
             <input type="checkbox" id="minimalMode">
-            <span class="toggle-slider"></span>
+            <span class="toggle-slider" aria-hidden="true"></span>
+            <span class="sr-only">Enable minimal mode</span>
           </label>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="performanceMode">Performance Mode</label>
-            <p class="setting-description">Reduce effects for smoother experience with many tabs</p>
+            <label for="performanceMode" class="setting-label">Performance Mode</label>
+            <p class="setting-description">Reduce effects for many tabs</p>
           </div>
-          <select id="performanceMode">
+          <select id="performanceMode" aria-label="Performance mode">
             <option value="full" selected>Full (all effects)</option>
-            <option value="balanced">Balanced (reduced particles)</option>
-            <option value="lite">Lite (minimal effects)</option>
+            <option value="balanced">Balanced</option>
+            <option value="lite">Lite</option>
           </select>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="maxVisiblePlants">Max Visible Plants</label>
-            <p class="setting-description">Limit plants shown (others in compost)</p>
+            <label for="maxVisiblePlants" class="setting-label">Max Visible Plants</label>
+            <p class="setting-description">Limit plants shown at once</p>
           </div>
-          <select id="maxVisiblePlants">
+          <select id="maxVisiblePlants" aria-label="Maximum visible plants">
             <option value="30">30 plants</option>
             <option value="50" selected>50 plants</option>
             <option value="75">75 plants</option>
@@ -169,10 +188,10 @@
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="targetFps">Animation Quality</label>
+            <label for="targetFps" class="setting-label">Animation Quality</label>
             <p class="setting-description">Lower for better battery life</p>
           </div>
-          <select id="targetFps">
+          <select id="targetFps" aria-label="Animation quality">
             <option value="60" selected>Smooth (60 fps)</option>
             <option value="30">Balanced (30 fps)</option>
             <option value="15">Battery Saver (15 fps)</option>
@@ -181,77 +200,103 @@
       </section>
 
       <!-- Personalization -->
-      <section class="settings-section">
-        <h2><span class="section-icon">✨</span> Personalization</h2>
+      <section class="settings-section" aria-labelledby="personal-heading">
+        <h2 id="personal-heading" class="section-header">
+          <span class="section-icon" id="personalIcon" aria-hidden="true"></span>
+          <span>Personalization</span>
+        </h2>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="gardenName">Garden Name</label>
+            <label for="gardenName" class="setting-label">Garden Name</label>
             <p class="setting-description">Your sanctuary's title</p>
           </div>
-          <input type="text" id="gardenName" placeholder="My Digital Sanctuary" maxlength="30">
+          <input type="text" id="gardenName" placeholder="My Garden" maxlength="30" aria-label="Garden name">
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="confettiEnabled">Harvest Confetti</label>
-            <p class="setting-description">Celebration effect when harvesting all</p>
+            <label for="confettiEnabled" class="setting-label">Harvest Celebration</label>
+            <p class="setting-description">Effect when harvesting all</p>
           </div>
           <label class="toggle">
             <input type="checkbox" id="confettiEnabled" checked>
-            <span class="toggle-slider"></span>
+            <span class="toggle-slider" aria-hidden="true"></span>
+            <span class="sr-only">Enable harvest celebration</span>
           </label>
         </div>
       </section>
 
       <!-- Privacy & Data -->
-      <section class="settings-section">
-        <h2><span class="section-icon">🔒</span> Privacy & Data</h2>
+      <section class="settings-section" aria-labelledby="privacy-heading">
+        <h2 id="privacy-heading" class="section-header">
+          <span class="section-icon" id="privacyIcon" aria-hidden="true"></span>
+          <span>Privacy</span>
+        </h2>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label for="blurTitles">Blur Tab Titles in Screenshots</label>
+            <label for="blurTitles" class="setting-label">Blur Tab Titles</label>
             <p class="setting-description">Hide sensitive tab names when sharing</p>
           </div>
           <label class="toggle">
             <input type="checkbox" id="blurTitles">
-            <span class="toggle-slider"></span>
+            <span class="toggle-slider" aria-hidden="true"></span>
+            <span class="sr-only">Blur tab titles in screenshots</span>
           </label>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Reset Garden Stats</label>
+            <label class="setting-label">Reset Statistics</label>
             <p class="setting-description">Clear all lifetime statistics</p>
           </div>
-          <button id="resetStats" class="btn-danger">Reset Stats</button>
+          <button id="resetStats" class="btn btn-danger" aria-label="Reset all garden statistics">
+            Reset
+          </button>
         </div>
 
         <div class="setting-item">
           <div class="setting-info">
-            <label>Export Data</label>
-            <p class="setting-description">Download your garden data as JSON</p>
+            <label class="setting-label">Export Data</label>
+            <p class="setting-description">Download your garden data</p>
           </div>
-          <button id="exportData" class="btn-secondary">Export</button>
+          <button id="exportData" class="btn btn-secondary" aria-label="Export garden data as JSON">
+            Export
+          </button>
         </div>
       </section>
     </main>
 
     <footer class="options-footer">
       <div class="footer-info">
-        <span>TabBloom v1.0.33</span>
-        <span class="separator">•</span>
-        <a href="https://github.com/your-repo/tabbloom" target="_blank">GitHub</a>
-        <span class="separator">•</span>
+        <span>TabBloom v2.0.0</span>
+        <span class="separator" aria-hidden="true"></span>
+        <a href="https://github.com/tabbloom/tabbloom" target="_blank" rel="noopener noreferrer">GitHub</a>
+        <span class="separator" aria-hidden="true"></span>
         <a href="mailto:support@tabbloom.app">Support</a>
       </div>
-      <div class="save-status" id="saveStatus">
-        <span class="status-icon">✓</span>
-        <span>Settings saved automatically</span>
+      <div class="save-status" id="saveStatus" role="status" aria-live="polite">
+        <span class="status-icon" id="checkIcon" aria-hidden="true"></span>
+        <span>Settings saved</span>
       </div>
     </footer>
   </div>
 
+  <script src="icons.js"></script>
   <script src="options.js"></script>
+  <script>
+    // Initialize icons after DOM loads
+    document.addEventListener('DOMContentLoaded', () => {
+      Icons.insert(document.getElementById('logoIcon'), 'flower', 32);
+      Icons.insert(document.getElementById('soundIcon'), 'speaker', 18);
+      Icons.insert(document.getElementById('gardenIcon'), 'seedling', 18);
+      Icons.insert(document.getElementById('seasonIcon'), 'leaf', 18);
+      Icons.insert(document.getElementById('perfIcon'), 'bolt', 18);
+      Icons.insert(document.getElementById('personalIcon'), 'sparkle', 18);
+      Icons.insert(document.getElementById('privacyIcon'), 'lock', 18);
+      Icons.insert(document.getElementById('checkIcon'), 'check', 14);
+    });
+  </script>
 </body>
 </html>

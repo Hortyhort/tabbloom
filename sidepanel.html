@@ -1,129 +1,162 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TabBloom Garden</title>
+  <link rel="stylesheet" href="design-tokens.css">
   <link rel="stylesheet" href="sidepanel.css">
-  <style>
-    .plant {
-      position: absolute;
-      transition:
-        transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-        filter 0.3s ease;
-      cursor: pointer;
-      image-rendering: pixelated;
-      will-change: transform, filter;
-      transform-origin: center bottom;
-    }
-
-    .plant:hover {
-      transform: scale(1.4) rotate(5deg) translateY(-12px);
-      filter:
-        drop-shadow(0 0 25px rgba(255, 220, 150, 0.8))
-        drop-shadow(0 0 15px rgba(255, 183, 197, 0.6))
-        brightness(1.15);
-      z-index: 100;
-      animation: magicalPulse 1.5s infinite ease-in-out;
-    }
-
-    @keyframes magicalPulse {
-      0% {
-        filter:
-          drop-shadow(0 0 15px rgba(255, 220, 150, 0.5))
-          drop-shadow(0 0 10px rgba(255, 183, 197, 0.4))
-          brightness(1.1);
-      }
-      50% {
-        filter:
-          drop-shadow(0 0 35px rgba(255, 220, 150, 0.9))
-          drop-shadow(0 0 25px rgba(255, 183, 197, 0.8))
-          brightness(1.2);
-      }
-      100% {
-        filter:
-          drop-shadow(0 0 15px rgba(255, 220, 150, 0.5))
-          drop-shadow(0 0 10px rgba(255, 183, 197, 0.4))
-          brightness(1.1);
-      }
-    }
-
-    /* Gentle breathing animation - up/down bob with slight rotation */
-    @keyframes gentleBreathe {
-      0%, 100% { transform: translateY(0) rotate(0deg); }
-      50%      { transform: translateY(-3px) rotate(0.8deg); }
-    }
-
-    /* Subtle left-right sway */
-    @keyframes gentleSway {
-      0%, 100% { transform: translateX(0); }
-      50%      { transform: translateX(2px); }
-    }
-
-    /* Combined breathing animation - the garden breathes as one */
-    .plant {
-      animation:
-        gentleBreathe 10s infinite ease-in-out,
-        gentleSway 14s infinite ease-in-out;
-      animation-delay: calc(var(--plant-index, 0) * 0.3s);
-    }
-
-    .plant:hover {
-      animation: magicalPulse 1.5s infinite ease-in-out;
-    }
-  </style>
 </head>
 <body>
   <div class="garden-container">
+    <!-- Header -->
     <header class="garden-header">
-      <div class="header-main">
-        <h1 id="gardenName">My Digital Sanctuary</h1>
-        <div class="stats-pills">
-          <span class="pill coins">✨ 120</span>
-          <span class="pill season">Spring</span>
-          <button id="statsBtn" class="pill" title="Garden stats" style="font-size:10px; padding:4px 6px; cursor:pointer;">📊</button>
-          <button id="shareBtn" class="pill share-btn" title="Share your garden">📸</button>
-          <button id="shareSettingsBtn" class="pill" title="Share settings" style="font-size:10px; padding:4px 6px; cursor:pointer;">⚙️</button>
+      <div class="header-left">
+        <span class="header-icon" id="headerIcon" aria-hidden="true"></span>
+        <div class="header-text">
+          <h1 id="gardenName" class="garden-title">My Garden</h1>
+          <p class="garden-subtitle" id="gardenSubtitle">12 plants thriving</p>
         </div>
+      </div>
+      <div class="header-actions">
+        <button
+          id="settingsBtn"
+          class="btn-icon"
+          aria-label="Open settings"
+          title="Settings"
+        >
+          <span class="icon" id="settingsIcon" aria-hidden="true"></span>
+        </button>
       </div>
     </header>
 
-    <div id="garden-container" style="flex: 1; position: relative; overflow-y: auto; overflow-x: hidden;">
-      <canvas id="garden-canvas"></canvas>
-      <div id="tooltip" class="glass-tooltip hidden"></div>
-      <div id="scroll-hint" class="scroll-hint"></div>
+    <!-- Stats Bar -->
+    <div class="stats-bar">
+      <div class="stat">
+        <span class="stat-icon" id="coinIcon" aria-hidden="true"></span>
+        <span class="stat-value" id="coinCount">0</span>
+        <span class="stat-label">coins</span>
+      </div>
+      <div class="stat-divider" aria-hidden="true"></div>
+      <div class="stat">
+        <span class="stat-icon stat-icon--healthy" id="healthyIcon" aria-hidden="true"></span>
+        <span class="stat-value" id="healthyCount">0</span>
+        <span class="stat-label">healthy</span>
+      </div>
+      <div class="stat-divider" aria-hidden="true"></div>
+      <div class="stat">
+        <span class="stat-icon stat-icon--wilting" id="wiltingIcon" aria-hidden="true"></span>
+        <span class="stat-value" id="wiltingCount">0</span>
+        <span class="stat-label">wilting</span>
+      </div>
     </div>
 
-    <!-- Quick Actions Mini-Bar (outside scroll container to stay fixed) -->
-    <div id="quick-actions">
-      <button id="quickHarvest" title="Harvest All Dormant">🌾</button>
-      <button id="quickRefresh" title="Refresh Garden">🔄</button>
-      <button id="quickShare" title="Share Garden">📸</button>
-      <button id="quickSettings" title="Settings">⚙️</button>
+    <!-- Garden Canvas -->
+    <div id="garden-container" class="garden-scroll" role="region" aria-label="Tab garden visualization">
+      <canvas id="garden-canvas" aria-hidden="true"></canvas>
+      <div id="tooltip" class="tooltip hidden" role="tooltip"></div>
+      <div id="scroll-hint" class="scroll-hint" aria-hidden="true"></div>
     </div>
 
+    <!-- Quick Actions -->
+    <div id="quick-actions" class="quick-actions" role="toolbar" aria-label="Quick actions">
+      <button
+        id="quickStats"
+        class="btn-icon btn-icon--sm"
+        aria-label="View garden statistics"
+        title="Stats"
+      >
+        <span class="icon" aria-hidden="true"></span>
+      </button>
+      <button
+        id="quickShare"
+        class="btn-icon btn-icon--sm"
+        aria-label="Share your garden"
+        title="Share"
+      >
+        <span class="icon" aria-hidden="true"></span>
+      </button>
+      <button
+        id="quickRefresh"
+        class="btn-icon btn-icon--sm"
+        aria-label="Refresh garden"
+        title="Refresh"
+      >
+        <span class="icon" aria-hidden="true"></span>
+      </button>
+    </div>
+
+    <!-- Footer -->
     <footer class="garden-footer">
-      <button id="harvestAll" class="harvest-btn">Harvest Dormant Tabs</button>
-      <p class="stats-text">47 tabs bloomed this week</p>
+      <button id="harvestAll" class="btn-primary harvest-btn" aria-label="Harvest all wilted tabs">
+        <span class="btn-icon-left" id="harvestIcon" aria-hidden="true"></span>
+        <span>Harvest Wilted</span>
+      </button>
+      <p class="stats-text" id="weeklyStats">0 tabs bloomed this week</p>
     </footer>
   </div>
 
   <!-- Onboarding Overlay -->
-  <div id="onboarding" class="onboarding-overlay hidden">
+  <div id="onboarding" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
     <div class="onboarding-card">
-      <div class="onboarding-icon">🌱</div>
-      <h2>Welcome to TabBloom!</h2>
-      <p>Your browser tabs are now seeds in a digital garden.</p>
-      <ul class="onboarding-tips">
-        <li><span>🌸</span> Active tabs bloom beautifully</li>
-        <li><span>🍂</span> Neglected tabs slowly wilt</li>
-        <li><span>✨</span> Harvest wilted tabs to earn coins</li>
-        <li><span>📸</span> Share your garden with friends</li>
+      <div class="onboarding-icon" id="onboardingFlower" aria-hidden="true"></div>
+      <h2 id="onboardingTitle">Welcome to TabBloom</h2>
+      <p class="onboarding-subtitle">Your browser tabs are now seeds in a digital garden.</p>
+      <ul class="onboarding-tips" role="list">
+        <li>
+          <span class="tip-icon" aria-hidden="true"></span>
+          <span>Active tabs bloom beautifully</span>
+        </li>
+        <li>
+          <span class="tip-icon tip-icon--wilting" aria-hidden="true"></span>
+          <span>Neglected tabs slowly wilt</span>
+        </li>
+        <li>
+          <span class="tip-icon tip-icon--coin" aria-hidden="true"></span>
+          <span>Harvest wilted tabs to earn coins</span>
+        </li>
+        <li>
+          <span class="tip-icon tip-icon--share" aria-hidden="true"></span>
+          <span>Share your garden with friends</span>
+        </li>
       </ul>
-      <button id="onboardingClose" class="onboarding-btn">Start Growing</button>
+      <button id="onboardingClose" class="btn-primary onboarding-btn">
+        Start Growing
+      </button>
     </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <script src="icons.js"></script>
   <script src="garden.js"></script>
+  <script>
+    // Initialize icons after DOM loads
+    document.addEventListener('DOMContentLoaded', () => {
+      // Header icons
+      Icons.insert(document.getElementById('headerIcon'), 'flower', 24);
+      Icons.insert(document.querySelector('#settingsBtn .icon'), 'settings', 20);
+
+      // Stats bar icons
+      Icons.insert(document.getElementById('coinIcon'), 'coin', 16);
+      Icons.insert(document.getElementById('healthyIcon'), 'leaf', 16);
+      Icons.insert(document.getElementById('wiltingIcon'), 'leafDroop', 16);
+
+      // Quick action icons
+      Icons.insert(document.querySelector('#quickStats .icon'), 'chart', 18);
+      Icons.insert(document.querySelector('#quickShare .icon'), 'camera', 18);
+      Icons.insert(document.querySelector('#quickRefresh .icon'), 'refresh', 18);
+
+      // Footer icons
+      Icons.insert(document.getElementById('harvestIcon'), 'harvest', 18);
+
+      // Onboarding icons
+      Icons.insert(document.getElementById('onboardingFlower'), 'seedling', 48);
+      document.querySelectorAll('.tip-icon').forEach((el, i) => {
+        const icons = ['flower', 'leafDroop', 'coin', 'share'];
+        Icons.insert(el, icons[i], 20);
+      });
+    });
+  </script>
 </body>
 </html>
