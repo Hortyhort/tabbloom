@@ -519,15 +519,28 @@ function drawSunRays(ctx) {
 let seasonalParticles = [];
 
 // ============================================
-// Web Audio API Sound System (ASMR Sounds)
+// Web Audio API Sound System (Professional ASMR)
 // ============================================
 const AudioSystem = {
     ctx: null,
-    reverbBuffer: null,
+    masterGain: null,
+    reverbNode: null,
+    samples: {},
+    samplesLoaded: false,
 
+    // Initialize the audio context and effects chain
     init() {
         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-        this.createReverbBuffer();
+
+        // Master gain for global volume
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.connect(this.ctx.destination);
+
+        // Create lush reverb
+        this.createLushReverb();
+
+        // Try to load audio samples
+        this.loadSamples();
     },
 
     ensureContext() {
@@ -535,302 +548,578 @@ const AudioSystem = {
         if (this.ctx.state === 'suspended') this.ctx.resume();
     },
 
-    // Create a soft reverb impulse response for warmth
-    createReverbBuffer() {
-        if (!this.ctx) return;
-        const length = this.ctx.sampleRate * 1.5; // 1.5 second reverb
-        const buffer = this.ctx.createBuffer(2, length, this.ctx.sampleRate);
-
-        for (let channel = 0; channel < 2; channel++) {
-            const data = buffer.getChannelData(channel);
-            for (let i = 0; i < length; i++) {
-                // Exponential decay with slight randomness for natural feel
-                const decay = Math.pow(1 - i / length, 2.5);
-                data[i] = (Math.random() * 2 - 1) * decay * 0.5;
-            }
-        }
-        this.reverbBuffer = buffer;
-    },
-
-    // Create a convolver node with reverb
-    createReverb(wetAmount = 0.3) {
-        if (!this.reverbBuffer) this.createReverbBuffer();
-        const convolver = this.ctx.createConvolver();
-        convolver.buffer = this.reverbBuffer;
-
-        const wet = this.ctx.createGain();
-        const dry = this.ctx.createGain();
-        wet.gain.value = wetAmount;
-        dry.gain.value = 1 - wetAmount;
-
-        return { convolver, wet, dry };
-    },
-
-    // Check if sounds are enabled (disabled in minimal mode)
     isEnabled() {
         return gardenSettings.soundEnabled && !gardenSettings.minimalMode;
     },
 
-    // Get current volume multiplier (0-1)
     getVolume() {
         return gardenSettings.masterVolume / 100;
     },
 
-    // Create a warm, layered tone (like a music box or kalimba)
-    createWarmTone(freq, duration, startTime, vol) {
-        const voices = [];
+    // Create a beautiful, lush reverb using algorithmic approach
+    createLushReverb() {
+        if (!this.ctx) return;
 
-        // Fundamental with soft attack
-        const osc1 = this.ctx.createOscillator();
-        const gain1 = this.ctx.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(freq, startTime);
-        gain1.gain.setValueAtTime(0, startTime);
-        gain1.gain.linearRampToValueAtTime(0.08 * vol, startTime + 0.04); // Soft attack
-        gain1.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-        osc1.connect(gain1);
-        voices.push({ osc: osc1, gain: gain1 });
-
-        // Soft octave above (very quiet, adds shimmer)
-        const osc2 = this.ctx.createOscillator();
-        const gain2 = this.ctx.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(freq * 2, startTime);
-        gain2.gain.setValueAtTime(0, startTime);
-        gain2.gain.linearRampToValueAtTime(0.02 * vol, startTime + 0.05);
-        gain2.gain.exponentialRampToValueAtTime(0.001, startTime + duration * 0.7);
-        osc2.connect(gain2);
-        voices.push({ osc: osc2, gain: gain2 });
-
-        // Fifth harmonic (adds warmth)
-        const osc3 = this.ctx.createOscillator();
-        const gain3 = this.ctx.createGain();
-        osc3.type = 'sine';
-        osc3.frequency.setValueAtTime(freq * 1.5, startTime);
-        gain3.gain.setValueAtTime(0, startTime);
-        gain3.gain.linearRampToValueAtTime(0.015 * vol, startTime + 0.06);
-        gain3.gain.exponentialRampToValueAtTime(0.001, startTime + duration * 0.5);
-        osc3.connect(gain3);
-        voices.push({ osc: osc3, gain: gain3 });
-
-        return voices;
-    },
-
-    // Gentle chime on harvest (warm, bell-like with reverb)
-    playHarvestChime() {
-        if (!this.isEnabled()) return;
-        this.ensureContext();
-        const vol = this.getVolume();
-        const now = this.ctx.currentTime;
-
-        // Pentatonic notes for pleasant sound (G5 and D6)
-        const notes = [784, 1175]; // G5, D6
-        const masterGain = this.ctx.createGain();
-        masterGain.gain.value = 1;
-
-        // Add reverb
-        const reverb = this.createReverb(0.4);
-        masterGain.connect(reverb.dry);
-        reverb.dry.connect(this.ctx.destination);
-        masterGain.connect(reverb.convolver);
-        reverb.convolver.connect(reverb.wet);
-        reverb.wet.connect(this.ctx.destination);
-
-        notes.forEach((freq, i) => {
-            const voices = this.createWarmTone(freq, 0.8, now + i * 0.06, vol);
-            voices.forEach(v => {
-                v.gain.connect(masterGain);
-                v.osc.start(now + i * 0.06);
-                v.osc.stop(now + i * 0.06 + 0.8);
-            });
-        });
-    },
-
-    // Happy celebration - gentle ascending harp-like arpeggio
-    playHarvestAllCelebration() {
-        if (!this.isEnabled()) return;
-        this.ensureContext();
-        const vol = this.getVolume();
-        const now = this.ctx.currentTime;
-
-        // Pentatonic scale for dreamy, pleasant sound (C, D, E, G, A, C)
-        const notes = [523, 587, 659, 784, 880, 1047]; // C5 pentatonic up to C6
-
-        const masterGain = this.ctx.createGain();
-        masterGain.gain.value = 0.8;
-
-        // Lush reverb for celebration
-        const reverb = this.createReverb(0.5);
-        masterGain.connect(reverb.dry);
-        reverb.dry.connect(this.ctx.destination);
-        masterGain.connect(reverb.convolver);
-        reverb.convolver.connect(reverb.wet);
-        reverb.wet.connect(this.ctx.destination);
-
-        notes.forEach((freq, i) => {
-            const delay = i * 0.1; // Gentle stagger
-            const voices = this.createWarmTone(freq, 1.2, now + delay, vol * 0.7);
-            voices.forEach(v => {
-                v.gain.connect(masterGain);
-                v.osc.start(now + delay);
-                v.osc.stop(now + delay + 1.2);
-            });
-        });
-
-        // Soft shimmer at the end
-        setTimeout(() => {
-            if (!this.ctx) return;
-            const shimmer = this.ctx.createOscillator();
-            const shimmerGain = this.ctx.createGain();
-            shimmer.type = 'sine';
-            shimmer.frequency.setValueAtTime(1568, this.ctx.currentTime); // G6
-            shimmerGain.gain.setValueAtTime(0, this.ctx.currentTime);
-            shimmerGain.gain.linearRampToValueAtTime(0.02 * vol, this.ctx.currentTime + 0.1);
-            shimmerGain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.8);
-            shimmer.connect(shimmerGain);
-            shimmerGain.connect(masterGain);
-            shimmer.start();
-            shimmer.stop(this.ctx.currentTime + 0.8);
-        }, 600);
-    },
-
-    // Soft rustle - gentler, more organic leaf sound
-    playGrowthRustle() {
-        if (!this.isEnabled()) return;
-        this.ensureContext();
-        const vol = this.getVolume();
-        const now = this.ctx.currentTime;
-
-        // Longer, softer rustle
-        const bufferSize = this.ctx.sampleRate * 0.25;
-        const buffer = this.ctx.createBuffer(2, bufferSize, this.ctx.sampleRate);
+        // Create a longer, more realistic reverb impulse
+        const sampleRate = this.ctx.sampleRate;
+        const length = sampleRate * 2.5; // 2.5 second reverb tail
+        const buffer = this.ctx.createBuffer(2, length, sampleRate);
 
         for (let channel = 0; channel < 2; channel++) {
             const data = buffer.getChannelData(channel);
-            // Gentle pink noise with smooth envelope
-            let b0 = 0, b1 = 0, b2 = 0;
-            for (let i = 0; i < bufferSize; i++) {
-                const white = Math.random() * 2 - 1;
-                // Pink noise algorithm
-                b0 = 0.99765 * b0 + white * 0.0990460;
-                b1 = 0.96300 * b1 + white * 0.2965164;
-                b2 = 0.57000 * b2 + white * 1.0526913;
-                const pink = (b0 + b1 + b2 + white * 0.1848) * 0.11;
 
-                // Smooth envelope (fade in and out)
-                const env = Math.sin(Math.PI * i / bufferSize);
-                data[i] = pink * env * 0.15;
+            // Early reflections (first 50ms)
+            const earlyLength = sampleRate * 0.05;
+            for (let i = 0; i < earlyLength; i++) {
+                // Sparse early reflections
+                if (Math.random() > 0.97) {
+                    const amplitude = 0.3 * (1 - i / earlyLength);
+                    data[i] = (Math.random() * 2 - 1) * amplitude;
+                }
+            }
+
+            // Diffuse tail with multiple decay rates
+            for (let i = earlyLength; i < length; i++) {
+                const t = i / length;
+                // Combine fast and slow decay for natural sound
+                const fastDecay = Math.exp(-5 * t);
+                const slowDecay = Math.exp(-2 * t);
+                const decay = fastDecay * 0.3 + slowDecay * 0.7;
+
+                // Add some modulation for richness
+                const mod = 1 + 0.1 * Math.sin(i * 0.001);
+
+                // Slight stereo decorrelation
+                const stereoOffset = channel === 0 ? 0 : Math.PI * 0.3;
+                const stereoMod = 1 + 0.05 * Math.sin(i * 0.0003 + stereoOffset);
+
+                data[i] = (Math.random() * 2 - 1) * decay * mod * stereoMod * 0.4;
+            }
+
+            // Apply lowpass smoothing to avoid harshness
+            let prev = 0;
+            for (let i = 0; i < length; i++) {
+                data[i] = prev * 0.3 + data[i] * 0.7;
+                prev = data[i];
+            }
+        }
+
+        this.reverbBuffer = buffer;
+    },
+
+    // Create reverb send with wet/dry mix
+    createReverbSend(wetAmount = 0.4) {
+        const convolver = this.ctx.createConvolver();
+        convolver.buffer = this.reverbBuffer;
+
+        const wetGain = this.ctx.createGain();
+        const dryGain = this.ctx.createGain();
+        const merger = this.ctx.createGain();
+
+        wetGain.gain.value = wetAmount;
+        dryGain.gain.value = 1 - wetAmount * 0.5; // Keep dry louder
+
+        convolver.connect(wetGain);
+        wetGain.connect(merger);
+        dryGain.connect(merger);
+        merger.connect(this.masterGain);
+
+        return { input: dryGain, reverb: convolver, output: merger };
+    },
+
+    // Try to load audio sample files (graceful fallback to synthesis)
+    async loadSamples() {
+        const sampleFiles = {
+            chime: 'sounds/chime.mp3',
+            celebration: 'sounds/chime-celebration.mp3',
+            rustle: 'sounds/rustle.mp3',
+            droop: 'sounds/droop.mp3',
+            hover: 'sounds/hover.mp3',
+            flutter: 'sounds/flutter.mp3'
+        };
+
+        for (const [name, path] of Object.entries(sampleFiles)) {
+            try {
+                const response = await fetch(chrome.runtime.getURL(path));
+                if (response.ok) {
+                    const arrayBuffer = await response.arrayBuffer();
+                    this.samples[name] = await this.ctx.decodeAudioData(arrayBuffer);
+                }
+            } catch (e) {
+                // Sample not available, will use synthesis fallback
+            }
+        }
+        this.samplesLoaded = true;
+    },
+
+    // Play a loaded sample with optional pitch shift
+    playSample(name, volume = 1, playbackRate = 1) {
+        if (!this.samples[name]) return false;
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = this.samples[name];
+        source.playbackRate.value = playbackRate;
+
+        const gain = this.ctx.createGain();
+        gain.gain.value = volume * this.getVolume();
+
+        source.connect(gain);
+        gain.connect(this.masterGain);
+        source.start();
+
+        return true;
+    },
+
+    // ==========================================
+    // KARPLUS-STRONG SYNTHESIS (Plucked strings)
+    // ==========================================
+    // Creates beautiful kalimba/music box tones
+
+    createKarplusStrong(freq, duration, brightness = 0.5) {
+        const sampleRate = this.ctx.sampleRate;
+        const samples = Math.ceil(sampleRate * duration);
+        const delayLength = Math.round(sampleRate / freq);
+        const buffer = this.ctx.createBuffer(1, samples, sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Initialize delay line with filtered noise (the "pluck")
+        const delayLine = new Float32Array(delayLength);
+        for (let i = 0; i < delayLength; i++) {
+            // Shaped initial excitation - softer attack
+            const pos = i / delayLength;
+            const shape = Math.sin(pos * Math.PI); // Smooth shape
+            delayLine[i] = (Math.random() * 2 - 1) * shape * 0.8;
+        }
+
+        // Pre-filter the excitation for warmth
+        for (let pass = 0; pass < 2; pass++) {
+            let prev = delayLine[0];
+            for (let i = 1; i < delayLength; i++) {
+                delayLine[i] = prev * 0.4 + delayLine[i] * 0.6;
+                prev = delayLine[i];
+            }
+        }
+
+        // Karplus-Strong algorithm with enhanced filtering
+        let writeIndex = 0;
+        const dampening = 0.996 - (1 - brightness) * 0.01; // Brightness control
+
+        for (let i = 0; i < samples; i++) {
+            const readIndex = (writeIndex + 1) % delayLength;
+            const nextIndex = (writeIndex + 2) % delayLength;
+
+            // Enhanced averaging filter with slight randomness for natural decay
+            const avg = (delayLine[readIndex] + delayLine[nextIndex]) * 0.5;
+            const filtered = avg * dampening;
+
+            // Add very subtle pitch drift for organic feel
+            const drift = 1 + (Math.random() - 0.5) * 0.0001;
+
+            data[i] = delayLine[writeIndex];
+            delayLine[writeIndex] = filtered * drift;
+            writeIndex = readIndex;
+        }
+
+        // Apply amplitude envelope
+        const attackSamples = sampleRate * 0.002; // 2ms attack
+        const releaseSamples = sampleRate * 0.3; // 300ms release
+
+        for (let i = 0; i < samples; i++) {
+            let env = 1;
+            if (i < attackSamples) {
+                env = i / attackSamples;
+            } else if (i > samples - releaseSamples) {
+                env = (samples - i) / releaseSamples;
+            }
+            data[i] *= env;
+        }
+
+        return buffer;
+    },
+
+    // ==========================================
+    // FM SYNTHESIS (Bell-like tones)
+    // ==========================================
+
+    createFMBell(freq, duration, harmonicity = 2.5, modulationIndex = 3) {
+        const sampleRate = this.ctx.sampleRate;
+        const samples = Math.ceil(sampleRate * duration);
+        const buffer = this.ctx.createBuffer(2, samples, sampleRate);
+
+        for (let channel = 0; channel < 2; channel++) {
+            const data = buffer.getChannelData(channel);
+            // Slight stereo detuning
+            const detune = channel === 0 ? 1 : 1.002;
+            const carrierFreq = freq * detune;
+            const modFreq = carrierFreq * harmonicity;
+
+            for (let i = 0; i < samples; i++) {
+                const t = i / sampleRate;
+
+                // Amplitude envelope - bell-like with fast attack, slow decay
+                const ampEnv = Math.exp(-3 * t) * (1 - Math.exp(-t * 100));
+
+                // Modulation index envelope - decreases over time for natural bell
+                const modEnv = modulationIndex * Math.exp(-4 * t);
+
+                // FM synthesis
+                const modulator = Math.sin(2 * Math.PI * modFreq * t) * modEnv;
+                const carrier = Math.sin(2 * Math.PI * carrierFreq * t + modulator);
+
+                data[i] = carrier * ampEnv * 0.3;
+            }
+        }
+
+        return buffer;
+    },
+
+    // ==========================================
+    // BEAUTIFUL HARVEST CHIME
+    // ==========================================
+
+    playHarvestChime() {
+        if (!this.isEnabled()) return;
+        this.ensureContext();
+
+        // Try sample first
+        if (this.playSample('chime', 0.8)) return;
+
+        // Synthesis fallback - kalimba-style dual notes
+        const vol = this.getVolume();
+        const now = this.ctx.currentTime;
+
+        // Pentatonic notes: G5 (784Hz) and D6 (1175Hz)
+        const notes = [
+            { freq: 784, delay: 0, vol: 0.7 },
+            { freq: 1175, delay: 0.08, vol: 0.5 }
+        ];
+
+        const reverbSend = this.createReverbSend(0.5);
+
+        notes.forEach(note => {
+            // Use Karplus-Strong for beautiful plucked sound
+            const buffer = this.createKarplusStrong(note.freq, 1.5, 0.7);
+            const source = this.ctx.createBufferSource();
+            source.buffer = buffer;
+
+            const gain = this.ctx.createGain();
+            gain.gain.value = note.vol * vol;
+
+            // Warm filter
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 4000;
+            filter.Q.value = 0.5;
+
+            source.connect(filter);
+            filter.connect(gain);
+            gain.connect(reverbSend.input);
+            gain.connect(reverbSend.reverb);
+
+            source.start(now + note.delay);
+        });
+    },
+
+    // ==========================================
+    // CELEBRATION ARPEGGIO
+    // ==========================================
+
+    playHarvestAllCelebration() {
+        if (!this.isEnabled()) return;
+        this.ensureContext();
+
+        if (this.playSample('celebration', 0.8)) return;
+
+        const vol = this.getVolume();
+        const now = this.ctx.currentTime;
+
+        // Major pentatonic ascending: C5, D5, E5, G5, A5, C6
+        const notes = [523, 587, 659, 784, 880, 1047];
+
+        const reverbSend = this.createReverbSend(0.6);
+
+        notes.forEach((freq, i) => {
+            const delay = i * 0.12;
+
+            // Alternate between Karplus-Strong and FM for variety
+            const buffer = i % 2 === 0
+                ? this.createKarplusStrong(freq, 2, 0.8)
+                : this.createFMBell(freq, 2, 2.5, 2);
+
+            const source = this.ctx.createBufferSource();
+            source.buffer = buffer;
+
+            const gain = this.ctx.createGain();
+            gain.gain.setValueAtTime(0, now + delay);
+            gain.gain.linearRampToValueAtTime(0.4 * vol, now + delay + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + delay + 2);
+
+            source.connect(gain);
+            gain.connect(reverbSend.input);
+            gain.connect(reverbSend.reverb);
+
+            source.start(now + delay);
+        });
+
+        // Add magical shimmer at the end
+        setTimeout(() => {
+            this.playShimmer(1568, 0.15 * vol); // G6
+        }, 700);
+    },
+
+    // Ethereal shimmer effect
+    playShimmer(freq, vol) {
+        if (!this.ctx) return;
+
+        const now = this.ctx.currentTime;
+        const reverbSend = this.createReverbSend(0.7);
+
+        // Multiple detuned oscillators for chorus effect
+        for (let i = 0; i < 3; i++) {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.value = freq * (1 + (i - 1) * 0.003); // Slight detune
+
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(vol / 3, now + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+
+            osc.connect(gain);
+            gain.connect(reverbSend.input);
+            gain.connect(reverbSend.reverb);
+
+            osc.start(now);
+            osc.stop(now + 1.2);
+        }
+    },
+
+    // ==========================================
+    // ORGANIC LEAF RUSTLE
+    // ==========================================
+
+    playGrowthRustle() {
+        if (!this.isEnabled()) return;
+        this.ensureContext();
+
+        if (this.playSample('rustle', 0.6)) return;
+
+        const vol = this.getVolume();
+        const now = this.ctx.currentTime;
+        const sampleRate = this.ctx.sampleRate;
+
+        // Create organic rustle with multiple filtered noise layers
+        const duration = 0.4;
+        const bufferSize = sampleRate * duration;
+        const buffer = this.ctx.createBuffer(2, bufferSize, sampleRate);
+
+        // Pink noise state
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0;
+
+        for (let channel = 0; channel < 2; channel++) {
+            const data = buffer.getChannelData(channel);
+
+            // Reset noise state for each channel with slight variation
+            const channelOffset = channel * 0.1;
+
+            for (let i = 0; i < bufferSize; i++) {
+                const t = i / bufferSize;
+
+                // Voss-McCartney pink noise (more natural than simple algorithm)
+                const white = Math.random() * 2 - 1;
+                b0 = 0.99886 * b0 + white * 0.0555179;
+                b1 = 0.99332 * b1 + white * 0.0750759;
+                b2 = 0.96900 * b2 + white * 0.1538520;
+                b3 = 0.86650 * b3 + white * 0.3104856;
+                b4 = 0.55000 * b4 + white * 0.5329522;
+                b5 = -0.7616 * b5 - white * 0.0168980;
+                const pink = (b0 + b1 + b2 + b3 + b4 + b5 + white * 0.5362) * 0.11;
+
+                // Natural envelope with multiple peaks (like actual leaf movement)
+                const env1 = Math.sin(Math.PI * t) * Math.sin(Math.PI * t);
+                const env2 = Math.sin(Math.PI * t * 2 + channelOffset) * 0.3;
+                const env = env1 + Math.max(0, env2);
+
+                // Add some granular texture
+                const grain = (Math.random() > 0.98) ? Math.random() * 0.2 : 0;
+
+                data[i] = (pink * 0.15 + grain) * env;
             }
         }
 
         const source = this.ctx.createBufferSource();
         source.buffer = buffer;
 
-        // Warm lowpass filter
+        // Bandpass for leafy character
         const filter = this.ctx.createBiquadFilter();
-        filter.type = 'lowpass';
-        filter.frequency.value = 1200;
-        filter.Q.value = 0.5;
+        filter.type = 'bandpass';
+        filter.frequency.value = 2500;
+        filter.Q.value = 0.8;
+
+        // Second filter for warmth
+        const lowpass = this.ctx.createBiquadFilter();
+        lowpass.type = 'lowpass';
+        lowpass.frequency.value = 6000;
 
         const gain = this.ctx.createGain();
-        gain.gain.setValueAtTime(0.5 * vol, now);
+        gain.gain.value = 0.7 * vol;
 
         source.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        filter.connect(lowpass);
+        lowpass.connect(gain);
+        gain.connect(this.masterGain);
 
         source.start();
     },
 
-    // Gentle wilt sound - soft, melancholic but not jarring
+    // ==========================================
+    // MELANCHOLIC WILT SOUND
+    // ==========================================
+
     playWiltDroop() {
         if (!this.isEnabled()) return;
         this.ensureContext();
+
+        if (this.playSample('droop', 0.5)) return;
+
         const vol = this.getVolume();
         const now = this.ctx.currentTime;
 
-        // Soft descending tone with vibrato
+        const reverbSend = this.createReverbSend(0.5);
+
+        // Descending minor third: G4 (392) to E4 (330) - melancholic interval
         const osc = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator(); // Octave below for depth
         const vibrato = this.ctx.createOscillator();
         const vibratoGain = this.ctx.createGain();
         const gain = this.ctx.createGain();
+        const gain2 = this.ctx.createGain();
 
-        // Vibrato for organic feel
+        // Gentle vibrato
         vibrato.type = 'sine';
-        vibrato.frequency.value = 4; // Slow vibrato
-        vibratoGain.gain.value = 8; // Subtle pitch wobble
+        vibrato.frequency.value = 5;
+        vibratoGain.gain.value = 4;
         vibrato.connect(vibratoGain);
         vibratoGain.connect(osc.frequency);
+        vibratoGain.connect(osc2.frequency);
 
+        // Main tone - descending
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(392, now); // G4
-        osc.frequency.exponentialRampToValueAtTime(294, now + 0.5); // Gentle drop to D4
+        osc.frequency.setValueAtTime(392, now);
+        osc.frequency.exponentialRampToValueAtTime(330, now + 0.6);
 
+        // Sub octave
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(196, now);
+        osc2.frequency.exponentialRampToValueAtTime(165, now + 0.6);
+
+        // Envelope
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.06 * vol, now + 0.05); // Soft attack
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        gain.gain.linearRampToValueAtTime(0.08 * vol, now + 0.08);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
 
-        // Add subtle reverb
-        const reverb = this.createReverb(0.3);
+        gain2.gain.setValueAtTime(0, now);
+        gain2.gain.linearRampToValueAtTime(0.03 * vol, now + 0.1);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
+
         osc.connect(gain);
-        gain.connect(reverb.dry);
-        reverb.dry.connect(this.ctx.destination);
-        gain.connect(reverb.convolver);
-        reverb.convolver.connect(reverb.wet);
-        reverb.wet.connect(this.ctx.destination);
+        osc2.connect(gain2);
+        gain.connect(reverbSend.input);
+        gain.connect(reverbSend.reverb);
+        gain2.connect(reverbSend.input);
 
         vibrato.start(now);
         osc.start(now);
-        vibrato.stop(now + 0.5);
-        osc.stop(now + 0.55);
+        osc2.start(now);
+        vibrato.stop(now + 0.7);
+        osc.stop(now + 0.75);
+        osc2.stop(now + 0.75);
     },
 
-    // Soft hover - whisper-quiet, like a breath
+    // ==========================================
+    // WHISPER-SOFT HOVER
+    // ==========================================
+
     playHoverSoft() {
         if (!this.isEnabled()) return;
         this.ensureContext();
+
+        if (this.playSample('hover', 0.3)) return;
+
         const vol = this.getVolume();
         const now = this.ctx.currentTime;
 
-        // Very gentle high tone, almost subliminal
+        // Ethereal rising tone - barely audible
         const osc = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
 
+        // Two slightly detuned oscillators for shimmer
         osc.type = 'sine';
-        osc.frequency.setValueAtTime(880, now); // A5
-        osc.frequency.exponentialRampToValueAtTime(1047, now + 0.15); // Rise to C6
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(1000, now + 0.12);
 
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(803, now);
+        osc2.frequency.exponentialRampToValueAtTime(1006, now + 0.12);
+
+        // Very soft envelope
         gain.gain.setValueAtTime(0, now);
-        gain.gain.linearRampToValueAtTime(0.015 * vol, now + 0.03); // Very soft
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        gain.gain.linearRampToValueAtTime(0.012 * vol, now + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
 
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        osc2.connect(gain);
+        gain.connect(this.masterGain);
 
         osc.start(now);
-        osc.stop(now + 0.15);
+        osc2.start(now);
+        osc.stop(now + 0.12);
+        osc2.stop(now + 0.12);
     },
 
-    // Butterfly flutter - delicate, airy, like tiny wings
+    // ==========================================
+    // DELICATE BUTTERFLY FLUTTER
+    // ==========================================
+
     playButterflyFlutter() {
         if (!this.isEnabled()) return;
         this.ensureContext();
+
+        if (this.playSample('flutter', 0.4)) return;
+
         const vol = this.getVolume();
         const now = this.ctx.currentTime;
+        const sampleRate = this.ctx.sampleRate;
 
-        // Create delicate flutter with filtered noise
-        const bufferSize = this.ctx.sampleRate * 0.12;
-        const buffer = this.ctx.createBuffer(2, bufferSize, this.ctx.sampleRate);
+        // Create delicate, airy flutter
+        const duration = 0.15;
+        const bufferSize = sampleRate * duration;
+        const buffer = this.ctx.createBuffer(2, bufferSize, sampleRate);
 
         for (let channel = 0; channel < 2; channel++) {
             const data = buffer.getChannelData(channel);
+            const phaseOffset = channel * Math.PI * 0.5;
+
             for (let i = 0; i < bufferSize; i++) {
-                // Rapid flutter pattern with smooth envelope
-                const flutter = Math.sin(i * 0.08) * Math.cos(i * 0.12);
-                const env = Math.sin(Math.PI * i / bufferSize);
-                // Add slight stereo variation
-                const stereoOffset = channel === 0 ? 1 : 0.95;
-                data[i] = flutter * env * 0.1 * stereoOffset;
+                const t = i / sampleRate;
+                const progress = i / bufferSize;
+
+                // Rapid flutter - like tiny wing beats
+                const flutterRate = 60; // Wing beats per second
+                const flutter = Math.sin(2 * Math.PI * flutterRate * t + phaseOffset);
+
+                // Amplitude modulation for natural variation
+                const ampMod = 0.7 + 0.3 * Math.sin(2 * Math.PI * 8 * t);
+
+                // Smooth envelope
+                const env = Math.sin(Math.PI * progress);
+
+                // High frequency shimmer
+                const shimmer = Math.sin(2 * Math.PI * 4000 * t) * 0.02;
+
+                data[i] = (flutter * 0.05 + shimmer) * ampMod * env;
             }
         }
 
@@ -838,128 +1127,289 @@ const AudioSystem = {
         source.buffer = buffer;
 
         // Highpass for airy quality
-        const filter = this.ctx.createBiquadFilter();
-        filter.type = 'highpass';
-        filter.frequency.value = 2000;
-        filter.Q.value = 0.3;
+        const highpass = this.ctx.createBiquadFilter();
+        highpass.type = 'highpass';
+        highpass.frequency.value = 3000;
+        highpass.Q.value = 0.3;
 
         const gain = this.ctx.createGain();
-        gain.gain.value = 0.25 * vol;
+        gain.gain.value = 0.4 * vol;
 
-        source.connect(filter);
-        filter.connect(gain);
-        gain.connect(this.ctx.destination);
+        const reverbSend = this.createReverbSend(0.3);
+
+        source.connect(highpass);
+        highpass.connect(gain);
+        gain.connect(reverbSend.input);
+        gain.connect(reverbSend.reverb);
 
         source.start();
     },
 
-    // Ambient soundscape state
-    ambientSource: null,
+    // ==========================================
+    // AMBIENT SOUNDSCAPES
+    // ==========================================
+
+    ambientSources: [],
     ambientGain: null,
-    ambientFilter: null,
     isAmbientPlaying: false,
 
-    // Start seasonal ambient soundscape - richer, more layered
     startAmbientSoundscape(season) {
         if (this.isAmbientPlaying) return;
         if (!this.isEnabled() || !gardenSettings.ambientEnabled) return;
         this.ensureContext();
 
+        this.isAmbientPlaying = true;
         const vol = this.getVolume();
-        const duration = 6; // 6 second loop for smoother looping
-        const bufferSize = this.ctx.sampleRate * duration;
-        const buffer = this.ctx.createBuffer(2, bufferSize, this.ctx.sampleRate);
 
-        // Pink noise generator state
-        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        // Try to load audio file first
+        const sampleName = `ambient-${season}`;
+        if (this.samples[sampleName]) {
+            const source = this.ctx.createBufferSource();
+            source.buffer = this.samples[sampleName];
+            source.loop = true;
+
+            this.ambientGain = this.ctx.createGain();
+            this.ambientGain.gain.value = 0.3 * vol;
+
+            source.connect(this.ambientGain);
+            this.ambientGain.connect(this.masterGain);
+            source.start();
+            this.ambientSources.push(source);
+            return;
+        }
+
+        // Synthesis fallback - create rich, layered soundscape
+        this.ambientGain = this.ctx.createGain();
+        this.ambientGain.gain.value = 0.35 * vol;
+        this.ambientGain.connect(this.masterGain);
+
+        if (season === 'summer') {
+            this.createSummerAmbient();
+        } else if (season === 'autumn') {
+            this.createAutumnAmbient();
+        } else if (season === 'winter') {
+            this.createWinterAmbient();
+        } else {
+            this.createSpringAmbient();
+        }
+    },
+
+    createSummerAmbient() {
+        const sampleRate = this.ctx.sampleRate;
+        const duration = 8;
+        const bufferSize = sampleRate * duration;
+        const buffer = this.ctx.createBuffer(2, bufferSize, sampleRate);
+
+        for (let channel = 0; channel < 2; channel++) {
+            const data = buffer.getChannelData(channel);
+            const stereoPhase = channel * Math.PI * 0.3;
+
+            for (let i = 0; i < bufferSize; i++) {
+                const t = i / sampleRate;
+                let sample = 0;
+
+                // Multiple cricket voices with natural rhythm variation
+                const cricketPhases = [0, 1.3, 2.7, 4.1];
+                cricketPhases.forEach((phase, idx) => {
+                    const cricketFreq = 4200 + idx * 200;
+                    const rhythm = Math.sin((t + phase) * (10 + idx * 0.5));
+                    const envelope = rhythm > 0.6 ? Math.pow((rhythm - 0.6) / 0.4, 2) : 0;
+                    const chirp = Math.sin(2 * Math.PI * cricketFreq * t + stereoPhase);
+                    sample += chirp * envelope * 0.008;
+                });
+
+                // Warm background drone
+                const drone = Math.sin(2 * Math.PI * 120 * t) * 0.003;
+
+                // Soft night air texture
+                const air = (Math.random() * 2 - 1) * 0.002;
+
+                data[i] = sample + drone + air;
+            }
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 6000;
+
+        source.connect(filter);
+        filter.connect(this.ambientGain);
+        source.start();
+        this.ambientSources.push(source);
+    },
+
+    createAutumnAmbient() {
+        const sampleRate = this.ctx.sampleRate;
+        const duration = 10;
+        const bufferSize = sampleRate * duration;
+        const buffer = this.ctx.createBuffer(2, bufferSize, sampleRate);
+
+        // Pink noise state
+        let b = [0, 0, 0, 0, 0, 0];
 
         for (let channel = 0; channel < 2; channel++) {
             const data = buffer.getChannelData(channel);
 
-            if (season === 'summer') {
-                // Gentle cricket chorus - softer, more natural
-                for (let i = 0; i < bufferSize; i++) {
-                    const t = i / this.ctx.sampleRate;
-                    // Multiple cricket voices at different rates
-                    const cricket1 = Math.sin(t * 3800) * (Math.sin(t * 12) > 0.7 ? 0.008 : 0);
-                    const cricket2 = Math.sin(t * 4200) * (Math.sin(t * 11 + 1) > 0.75 ? 0.006 : 0);
-                    const cricket3 = Math.sin(t * 3600) * (Math.sin(t * 13 + 2) > 0.8 ? 0.005 : 0);
-                    // Soft background hum
-                    const hum = (Math.random() * 2 - 1) * 0.002;
-                    data[i] = (cricket1 + cricket2 + cricket3 + hum) * (channel === 0 ? 1 : 0.9);
-                }
-            } else if (season === 'autumn') {
-                // Gentle wind with occasional leaf rustle
-                for (let i = 0; i < bufferSize; i++) {
-                    const t = i / this.ctx.sampleRate;
-                    // Smooth wind modulation
-                    const windMod = (Math.sin(t * 0.3) * 0.3 + Math.sin(t * 0.7) * 0.2 + 0.5);
-                    // Pink noise for natural wind
-                    const white = Math.random() * 2 - 1;
-                    b0 = 0.99886 * b0 + white * 0.0555179;
-                    b1 = 0.99332 * b1 + white * 0.0750759;
-                    b2 = 0.96900 * b2 + white * 0.1538520;
-                    const pink = (b0 + b1 + b2) * 0.15;
-                    data[i] = pink * windMod * 0.08;
-                }
-            } else if (season === 'winter') {
-                // Soft snow ambience - very quiet, peaceful
-                for (let i = 0; i < bufferSize; i++) {
-                    const t = i / this.ctx.sampleRate;
-                    // Very subtle, slow-moving noise
-                    const breathe = Math.sin(t * 0.15) * 0.3 + 0.7;
-                    const white = Math.random() * 2 - 1;
-                    data[i] = white * 0.004 * breathe;
-                }
-            } else {
-                // Spring: gentle birds with soft nature bed
-                for (let i = 0; i < bufferSize; i++) {
-                    const t = i / this.ctx.sampleRate;
-                    // Occasional bird chirp (very sparse)
-                    let bird = 0;
-                    if (Math.random() > 0.9998) {
-                        // Quick descending chirp
-                        for (let j = 0; j < 800 && i + j < bufferSize; j++) {
-                            const chirpT = j / 800;
-                            const freq = 3000 - chirpT * 1000;
-                            const chirpEnv = Math.sin(Math.PI * chirpT);
-                            data[i + j] += Math.sin(chirpT * freq * 0.1) * chirpEnv * 0.015;
-                        }
-                    }
-                    // Soft nature bed
-                    const rustle = (Math.random() * 2 - 1) * 0.003;
-                    data[i] += rustle;
-                }
+            for (let i = 0; i < bufferSize; i++) {
+                const t = i / sampleRate;
+
+                // Layered wind with slow modulation
+                const windMod1 = (Math.sin(t * 0.2) + 1) * 0.5;
+                const windMod2 = (Math.sin(t * 0.35 + 1) + 1) * 0.3;
+                const windMod3 = (Math.sin(t * 0.08) + 1) * 0.2;
+                const windEnv = windMod1 * 0.5 + windMod2 * 0.3 + windMod3 * 0.2;
+
+                // Pink noise
+                const white = Math.random() * 2 - 1;
+                b[0] = 0.99886 * b[0] + white * 0.0555179;
+                b[1] = 0.99332 * b[1] + white * 0.0750759;
+                b[2] = 0.96900 * b[2] + white * 0.1538520;
+                b[3] = 0.86650 * b[3] + white * 0.3104856;
+                b[4] = 0.55000 * b[4] + white * 0.5329522;
+                b[5] = -0.7616 * b[5] - white * 0.0168980;
+                const pink = (b[0] + b[1] + b[2] + b[3] + b[4] + b[5] + white * 0.5362) * 0.08;
+
+                // Occasional leaf rustle
+                const rustleChance = Math.random();
+                const rustle = rustleChance > 0.9995 ? (Math.random() * 2 - 1) * 0.05 : 0;
+
+                data[i] = pink * windEnv + rustle;
             }
         }
 
-        this.ambientSource = this.ctx.createBufferSource();
-        this.ambientSource.buffer = buffer;
-        this.ambientSource.loop = true;
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
 
-        // Warm filter
-        this.ambientFilter = this.ctx.createBiquadFilter();
-        this.ambientFilter.type = 'lowpass';
-        this.ambientFilter.frequency.value = season === 'summer' ? 5000 : 1800;
-        this.ambientFilter.Q.value = 0.5;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 2000;
 
-        this.ambientGain = this.ctx.createGain();
-        this.ambientGain.gain.value = 0.4 * vol;
+        source.connect(filter);
+        filter.connect(this.ambientGain);
+        source.start();
+        this.ambientSources.push(source);
+    },
 
-        this.ambientSource.connect(this.ambientFilter);
-        this.ambientFilter.connect(this.ambientGain);
-        this.ambientGain.connect(this.ctx.destination);
+    createWinterAmbient() {
+        const sampleRate = this.ctx.sampleRate;
+        const duration = 12;
+        const bufferSize = sampleRate * duration;
+        const buffer = this.ctx.createBuffer(2, bufferSize, sampleRate);
 
-        this.ambientSource.start();
-        this.isAmbientPlaying = true;
+        for (let channel = 0; channel < 2; channel++) {
+            const data = buffer.getChannelData(channel);
+
+            for (let i = 0; i < bufferSize; i++) {
+                const t = i / sampleRate;
+
+                // Very soft, slow-breathing noise
+                const breathe = (Math.sin(t * 0.1) + 1) * 0.4 + 0.2;
+                const softNoise = (Math.random() * 2 - 1) * 0.003 * breathe;
+
+                // Distant, crystalline shimmer
+                const shimmerChance = Math.random();
+                let shimmer = 0;
+                if (shimmerChance > 0.9998) {
+                    const shimmerFreq = 2000 + Math.random() * 2000;
+                    shimmer = Math.sin(2 * Math.PI * shimmerFreq * t) * 0.01;
+                }
+
+                data[i] = softNoise + shimmer;
+            }
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1500;
+
+        source.connect(filter);
+        filter.connect(this.ambientGain);
+        source.start();
+        this.ambientSources.push(source);
+    },
+
+    createSpringAmbient() {
+        const sampleRate = this.ctx.sampleRate;
+        const duration = 10;
+        const bufferSize = sampleRate * duration;
+        const buffer = this.ctx.createBuffer(2, bufferSize, sampleRate);
+
+        for (let channel = 0; channel < 2; channel++) {
+            const data = buffer.getChannelData(channel);
+            const stereoOffset = channel * 0.5;
+
+            for (let i = 0; i < bufferSize; i++) {
+                const t = i / sampleRate;
+                let sample = 0;
+
+                // Soft nature bed
+                sample += (Math.random() * 2 - 1) * 0.002;
+
+                // Occasional bird calls (sparse and varied)
+                if (Math.random() > 0.9997) {
+                    const birdType = Math.floor(Math.random() * 3);
+                    const birdLength = 600 + Math.random() * 400;
+
+                    for (let j = 0; j < birdLength && i + j < bufferSize; j++) {
+                        const bt = j / birdLength;
+                        const birdEnv = Math.sin(Math.PI * bt);
+                        let birdFreq;
+
+                        if (birdType === 0) {
+                            // Descending chirp
+                            birdFreq = 3500 - bt * 1500;
+                        } else if (birdType === 1) {
+                            // Warbling
+                            birdFreq = 2800 + Math.sin(bt * 20) * 400;
+                        } else {
+                            // Two-note call
+                            birdFreq = bt < 0.5 ? 3000 : 2500;
+                        }
+
+                        const birdSound = Math.sin(2 * Math.PI * birdFreq * bt) * birdEnv * 0.02;
+                        data[i + j] += birdSound;
+                    }
+                }
+
+                // Gentle breeze
+                const breeze = (Math.sin(t * 0.3 + stereoOffset) + 1) * 0.3;
+                sample += (Math.random() * 2 - 1) * 0.001 * breeze;
+
+                data[i] += sample;
+            }
+        }
+
+        const source = this.ctx.createBufferSource();
+        source.buffer = buffer;
+        source.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 4000;
+
+        source.connect(filter);
+        filter.connect(this.ambientGain);
+        source.start();
+        this.ambientSources.push(source);
     },
 
     stopAmbientSoundscape() {
-        if (this.ambientSource) {
-            this.ambientSource.stop();
-            this.ambientSource = null;
-            this.isAmbientPlaying = false;
-        }
+        this.ambientSources.forEach(source => {
+            try {
+                source.stop();
+            } catch (e) {}
+        });
+        this.ambientSources = [];
+        this.isAmbientPlaying = false;
     }
 };
 
