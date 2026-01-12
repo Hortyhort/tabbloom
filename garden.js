@@ -5,9 +5,302 @@ const tooltip = document.getElementById('tooltip');
 
 let plants = [];
 let particles = [];
+let ambientParticles = []; // Fireflies/sparkles
+let butterflies = []; // Floating butterflies
+let clouds = []; // Soft drifting clouds
 let width, height;
 let hoveredPlant = null;
 let currentCoins = 120; // Starting coins
+let frameCount = 0; // For animations
+
+// ============================================
+// Soft Drifting Clouds
+// ============================================
+class Cloud {
+    constructor() {
+        this.reset(true);
+    }
+
+    reset(initial = false) {
+        this.y = Math.random() * height * 0.4;
+        this.x = initial ? Math.random() * width : -200;
+        this.speed = 0.1 + Math.random() * 0.2;
+        this.width = 80 + Math.random() * 120;
+        this.height = 30 + Math.random() * 40;
+        this.alpha = 0.15 + Math.random() * 0.2;
+        this.wobble = Math.random() * Math.PI * 2;
+        this.wobbleSpeed = 0.01 + Math.random() * 0.01;
+    }
+
+    update() {
+        this.x += this.speed;
+        this.wobble += this.wobbleSpeed;
+
+        if (this.x > width + 200) {
+            this.reset();
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+
+        const wobbleY = Math.sin(this.wobble) * 5;
+
+        // Draw soft cloud using multiple overlapping ellipses
+        const gradient = ctx.createRadialGradient(
+            this.x, this.y + wobbleY,
+            0,
+            this.x, this.y + wobbleY,
+            this.width * 0.6
+        );
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.8)');
+        gradient.addColorStop(0.5, 'rgba(255, 250, 245, 0.5)');
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradient;
+
+        // Main cloud body
+        ctx.beginPath();
+        ctx.ellipse(this.x, this.y + wobbleY, this.width * 0.5, this.height * 0.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Cloud puffs
+        ctx.beginPath();
+        ctx.ellipse(this.x - this.width * 0.3, this.y + wobbleY + 5, this.width * 0.35, this.height * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.ellipse(this.x + this.width * 0.25, this.y + wobbleY + 3, this.width * 0.4, this.height * 0.55, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+// ============================================
+// Ambient Floating Particles (Fireflies/Sparkles)
+// ============================================
+class AmbientParticle {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.size = 1.5 + Math.random() * 3;
+        this.baseAlpha = 0.3 + Math.random() * 0.5;
+        this.alpha = this.baseAlpha;
+        this.pulseSpeed = 0.02 + Math.random() * 0.03;
+        this.pulsePhase = Math.random() * Math.PI * 2;
+        this.driftX = (Math.random() - 0.5) * 0.3;
+        this.driftY = (Math.random() - 0.5) * 0.2 - 0.1; // Slight upward drift
+        this.color = this.getRandomWarmColor();
+        this.twinkleRate = 0.05 + Math.random() * 0.1;
+    }
+
+    getRandomWarmColor() {
+        const colors = [
+            '#FFE4B5', // Moccasin
+            '#FFD700', // Gold
+            '#FFECD2', // Warm cream
+            '#FFF8DC', // Cornsilk
+            '#FFB7C5', // Pink
+            '#FFFACD', // Lemon chiffon
+            '#FFC9A8', // Peach
+        ];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    update() {
+        this.pulsePhase += this.pulseSpeed;
+        this.alpha = this.baseAlpha * (0.5 + Math.sin(this.pulsePhase) * 0.5);
+
+        this.x += this.driftX;
+        this.y += this.driftY;
+
+        // Wrap around screen
+        if (this.x < -10) this.x = width + 10;
+        if (this.x > width + 10) this.x = -10;
+        if (this.y < -10) this.y = height + 10;
+        if (this.y > height + 10) this.y = -10;
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha;
+
+        // Outer glow
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 3);
+        gradient.addColorStop(0, this.color);
+        gradient.addColorStop(0.4, this.color + '80');
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 3, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bright core
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+// ============================================
+// Butterflies
+// ============================================
+class Butterfly {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height * 0.7;
+        this.targetX = Math.random() * width;
+        this.targetY = Math.random() * height * 0.7;
+        this.speed = 0.5 + Math.random() * 1;
+        this.wingPhase = Math.random() * Math.PI * 2;
+        this.wingSpeed = 0.3 + Math.random() * 0.2;
+        this.size = 4 + Math.random() * 4;
+        this.color = this.getRandomColor();
+        this.accentColor = this.getAccentColor();
+        this.restTimer = 0;
+        this.isResting = false;
+        this.wobble = Math.random() * Math.PI * 2;
+    }
+
+    getRandomColor() {
+        const colors = ['#FFB7C5', '#FFC9A8', '#B7D4FF', '#D4B7FF', '#FFE4B5', '#98D8AA'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    getAccentColor() {
+        const colors = ['#FF8FAB', '#FFB088', '#88B4FF', '#B488FF', '#FFD488', '#78C890'];
+        return colors[Math.floor(Math.random() * colors.length)];
+    }
+
+    update() {
+        this.wingPhase += this.wingSpeed;
+        this.wobble += 0.05;
+
+        if (this.isResting) {
+            this.restTimer--;
+            if (this.restTimer <= 0) {
+                this.isResting = false;
+                this.targetX = Math.random() * width;
+                this.targetY = Math.random() * height * 0.7;
+            }
+            return;
+        }
+
+        // Move toward target with wobble
+        const dx = this.targetX - this.x;
+        const dy = this.targetY - this.y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        if (dist < 20) {
+            // Occasionally rest on a flower
+            if (Math.random() < 0.3 && plants.length > 0) {
+                const randomPlant = plants[Math.floor(Math.random() * plants.length)];
+                this.x = randomPlant.x + (Math.random() - 0.5) * 20;
+                this.y = randomPlant.y - 30;
+                this.isResting = true;
+                this.restTimer = 60 + Math.random() * 120;
+            } else {
+                this.targetX = Math.random() * width;
+                this.targetY = Math.random() * height * 0.7;
+            }
+        } else {
+            this.x += (dx / dist) * this.speed + Math.sin(this.wobble) * 0.5;
+            this.y += (dy / dist) * this.speed + Math.cos(this.wobble * 1.3) * 0.3;
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        const wingFlap = this.isResting ? 0.1 : Math.sin(this.wingPhase) * 0.8;
+        const direction = this.targetX > this.x ? 1 : -1;
+
+        ctx.scale(direction, 1);
+
+        // Wing shadow
+        ctx.globalAlpha = 0.2;
+        ctx.fillStyle = '#000';
+        this.drawWings(ctx, wingFlap, 2, 2);
+
+        // Main wings
+        ctx.globalAlpha = 0.85;
+        this.drawWings(ctx, wingFlap, 0, 0);
+
+        // Body
+        ctx.fillStyle = '#4A3728';
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.size * 0.15, this.size * 0.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Antennae
+        ctx.strokeStyle = '#4A3728';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -this.size * 0.4);
+        ctx.quadraticCurveTo(-this.size * 0.2, -this.size * 0.8, -this.size * 0.15, -this.size * 0.9);
+        ctx.moveTo(0, -this.size * 0.4);
+        ctx.quadraticCurveTo(this.size * 0.2, -this.size * 0.8, this.size * 0.15, -this.size * 0.9);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    drawWings(ctx, wingFlap, offsetX, offsetY) {
+        ctx.save();
+        ctx.translate(offsetX, offsetY);
+
+        // Upper wings
+        ctx.save();
+        ctx.scale(1, 0.3 + wingFlap * 0.7);
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(-this.size * 0.4, -this.size * 0.2, this.size * 0.6, this.size * 0.8, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = this.accentColor;
+        ctx.beginPath();
+        ctx.ellipse(-this.size * 0.35, -this.size * 0.15, this.size * 0.3, this.size * 0.4, -0.3, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(this.size * 0.4, -this.size * 0.2, this.size * 0.6, this.size * 0.8, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = this.accentColor;
+        ctx.beginPath();
+        ctx.ellipse(this.size * 0.35, -this.size * 0.15, this.size * 0.3, this.size * 0.4, 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        // Lower wings
+        ctx.save();
+        ctx.scale(1, 0.4 + wingFlap * 0.6);
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(-this.size * 0.3, this.size * 0.3, this.size * 0.4, this.size * 0.5, -0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(this.size * 0.3, this.size * 0.3, this.size * 0.4, this.size * 0.5, 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+
+        ctx.restore();
+    }
+}
 
 // ============================================
 // Web Audio API Sound System (ASMR Sounds)
@@ -314,21 +607,152 @@ function setupOnboarding() {
     }
 }
 
-// Configuration
+// Configuration - Warmer, cozier color palette
 const COLORS = {
     petalPink: '#FFB7C5',
     petalWhite: '#FFF5F7',
     petalDeep: '#E891A5',
-    stamen: '#8B4513',
-    anther: '#CD853F',
-    stem: '#4A7043',
-    stemDark: '#3D5C37',
-    leaf: '#5C8A4D',
-    leafDark: '#4A7043',
+    petalSunset: '#FFCBA4',
+    stamen: '#8B5A2B',
+    anther: '#DEB887',
+    stem: '#5D7A4A',        // Warmer green
+    stemDark: '#4A6339',
+    leaf: '#7BA05B',        // Warmer, more yellow-green
+    leafDark: '#5D7A4A',
+    leafHighlight: '#98BF6A',
     wilted: '#C4A574',
     wiltedPetal: '#D4C4A8',
-    text: '#1d1d1f'
+    text: '#3D3226',        // Warm brown text
+    shadow: 'rgba(62, 45, 35, 0.15)', // Warm shadow
+
+    // Sunset gradient colors
+    skyTop: '#7BA4D4',      // Soft blue
+    skyMid: '#F8C9A8',      // Peachy orange
+    skyBottom: '#FFE4D6',   // Warm cream
+    sunGlow: '#FFD89B',     // Golden glow
+
+    // Light pool colors
+    warmLight: 'rgba(255, 236, 210, 0.4)',
+    pinkLight: 'rgba(255, 183, 197, 0.25)',
 };
+
+// ============================================
+// Background Rendering (Sunset Gradient + Effects)
+// ============================================
+function drawBackground() {
+    // Main sunset gradient
+    const skyGradient = ctx.createLinearGradient(0, 0, 0, height);
+    skyGradient.addColorStop(0, COLORS.skyTop);
+    skyGradient.addColorStop(0.3, COLORS.skyMid);
+    skyGradient.addColorStop(0.6, COLORS.skyBottom);
+    skyGradient.addColorStop(1, '#FFF9F5');
+
+    ctx.fillStyle = skyGradient;
+    ctx.fillRect(0, 0, width, height);
+
+    // Soft sun glow (upper area)
+    const sunX = width * 0.7;
+    const sunY = height * 0.15;
+    const sunGlow = ctx.createRadialGradient(sunX, sunY, 0, sunX, sunY, height * 0.5);
+    sunGlow.addColorStop(0, 'rgba(255, 216, 155, 0.6)');
+    sunGlow.addColorStop(0.3, 'rgba(255, 200, 150, 0.3)');
+    sunGlow.addColorStop(0.6, 'rgba(255, 180, 130, 0.1)');
+    sunGlow.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = sunGlow;
+    ctx.fillRect(0, 0, width, height);
+
+    // Warm light pools scattered around
+    drawLightPools();
+
+    // Soft vignette
+    drawVignette();
+
+    // Subtle grid pattern (garden bed feel)
+    drawGardenGrid();
+}
+
+function drawLightPools() {
+    // Create 2-3 warm light pools
+    const pools = [
+        { x: width * 0.2, y: height * 0.6, radius: width * 0.4, color: COLORS.warmLight },
+        { x: width * 0.8, y: height * 0.4, radius: width * 0.35, color: COLORS.pinkLight },
+        { x: width * 0.5, y: height * 0.8, radius: width * 0.5, color: 'rgba(255, 240, 220, 0.3)' },
+    ];
+
+    pools.forEach(pool => {
+        const gradient = ctx.createRadialGradient(pool.x, pool.y, 0, pool.x, pool.y, pool.radius);
+        gradient.addColorStop(0, pool.color);
+        gradient.addColorStop(0.5, pool.color.replace(/[\d.]+\)$/, '0.1)'));
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(pool.x, pool.y, pool.radius, 0, Math.PI * 2);
+        ctx.fill();
+    });
+}
+
+function drawVignette() {
+    const gradient = ctx.createRadialGradient(
+        width / 2, height / 2, Math.min(width, height) * 0.2,
+        width / 2, height / 2, Math.max(width, height) * 0.8
+    );
+    gradient.addColorStop(0, 'transparent');
+    gradient.addColorStop(0.7, 'transparent');
+    gradient.addColorStop(1, 'rgba(62, 45, 35, 0.15)');
+
+    ctx.fillStyle = gradient;
+    ctx.fillRect(0, 0, width, height);
+}
+
+function drawGardenGrid() {
+    ctx.save();
+    ctx.globalAlpha = 0.08;
+    ctx.strokeStyle = '#7BA05B';
+    ctx.lineWidth = 1;
+
+    const gridSize = 25;
+
+    // Only draw in lower portion (garden bed area)
+    const startY = height * 0.3;
+
+    for (let x = 0; x < width; x += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(x, startY);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+    }
+
+    for (let y = startY; y < height; y += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+// Draw soft shadow under a plant
+function drawPlantShadow(x, y, scale = 1) {
+    ctx.save();
+
+    const shadowWidth = 35 * scale;
+    const shadowHeight = 12 * scale;
+
+    const gradient = ctx.createRadialGradient(x, y + 45, 0, x, y + 45, shadowWidth);
+    gradient.addColorStop(0, 'rgba(62, 45, 35, 0.2)');
+    gradient.addColorStop(0.5, 'rgba(62, 45, 35, 0.1)');
+    gradient.addColorStop(1, 'transparent');
+
+    ctx.fillStyle = gradient;
+    ctx.beginPath();
+    ctx.ellipse(x, y + 45, shadowWidth, shadowHeight, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
 
 // Grid layout settings - larger plants with more breathing room
 const PLANT_SIZE = 80;
@@ -337,7 +761,7 @@ const SPACING = 110;
 const SCALE = 1.4;
 
 // Create interactive DOM element overlay for a plant
-function createPlantElement(tab, x, y) {
+function createPlantElement(tab, x, y, plantIndex = 0) {
     const plant = document.createElement('div');
     plant.className = 'plant';
     plant.style.left = `${x - PLANT_SIZE / 2}px`;
@@ -347,22 +771,28 @@ function createPlantElement(tab, x, y) {
     plant.style.zIndex = '10';
     plant.style.transformOrigin = 'center bottom';
 
+    // Add random sway delay for organic feel
+    plant.style.setProperty('--sway-delay', `${Math.random() * 4}s`);
+
     plant.addEventListener('mouseenter', () => {
         AudioSystem.playHoverSoft();
-        // Apply hover animation explicitly
-        plant.style.animation = 'strongPulse 1.2s infinite alternate ease-in-out';
-        plant.style.transform = 'scale(1.35) rotate(6deg) translateY(-10px)';
-        // Show tooltip
-        tooltip.style.left = `${x + 15}px`;
-        tooltip.style.top = `${y - 60}px`;
-        tooltip.innerHTML = `<strong>${tab.title}</strong><br><span style="font-size:10px; opacity:0.7">${new URL(tab.url).hostname}</span>`;
+        // Apply magical hover animation with warm glow
+        plant.style.animation = 'magicalPulse 1.5s infinite ease-in-out';
+        plant.style.transform = 'scale(1.4) rotate(5deg) translateY(-12px)';
+        plant.style.filter = 'drop-shadow(0 0 25px rgba(255, 220, 150, 0.8)) drop-shadow(0 0 15px rgba(255, 183, 197, 0.6)) brightness(1.15)';
+        plant.style.zIndex = '100';
+        // Show tooltip with warm styling
+        tooltip.style.left = `${x + 20}px`;
+        tooltip.style.top = `${y - 70}px`;
+        tooltip.innerHTML = `<strong style="color: #5D7A4A;">${tab.title}</strong><br><span style="font-size:10px; color: #7A6B5A;">${new URL(tab.url).hostname}</span>`;
         tooltip.classList.remove('hidden');
     });
 
     plant.addEventListener('mouseleave', () => {
-        plant.style.animation = 'none';
-        plant.style.transform = 'scale(1) rotate(0deg) translateY(0)';
-        plant.style.filter = 'none';
+        plant.style.animation = 'idleSway 8s ease-in-out infinite';
+        plant.style.transform = '';
+        plant.style.filter = '';
+        plant.style.zIndex = '10';
         tooltip.classList.add('hidden');
     });
 
@@ -387,16 +817,35 @@ function createPlantElement(tab, x, y) {
 }
 
 // Canvas-based particle burst effect when harvesting
-function bloomParticles(x, y, count = 30) {
+function bloomParticles(x, y, count = 40) {
+    // Main petal burst
     for (let i = 0; i < count; i++) {
+        const angle = (Math.PI * 2 * i) / count + Math.random() * 0.5;
+        const speed = 3 + Math.random() * 5;
         particles.push({
-            x: x,              // center of clicked flower
+            x: x,
             y: y,
-            vx: (Math.random() - 0.5) * 8,
-            vy: Math.random() * -7 - 4, // strong upward burst
-            life: 90,
-            size: 5 + Math.random() * 8,
-            color: [COLORS.petalPink, COLORS.petalWhite, COLORS.anther, COLORS.leaf][Math.floor(Math.random() * 4)]
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - 4, // bias upward
+            life: 70 + Math.random() * 40,
+            size: 4 + Math.random() * 7,
+            color: [COLORS.petalPink, COLORS.petalWhite, COLORS.petalSunset, COLORS.leaf, '#FFD89B'][Math.floor(Math.random() * 5)],
+            rotation: Math.random() * Math.PI * 2,
+            rotationSpeed: (Math.random() - 0.5) * 0.2
+        });
+    }
+
+    // Golden sparkle trail
+    for (let i = 0; i < 15; i++) {
+        particles.push({
+            x: x + (Math.random() - 0.5) * 30,
+            y: y + (Math.random() - 0.5) * 30,
+            vx: (Math.random() - 0.5) * 2,
+            vy: Math.random() * -3 - 2,
+            life: 50 + Math.random() * 30,
+            size: 2 + Math.random() * 4,
+            color: ['#FFD700', '#FFF8DC', '#FFE4B5', '#FFFFFF'][Math.floor(Math.random() * 4)],
+            isSparkle: true
         });
     }
 }
@@ -408,6 +857,11 @@ function resizeCanvas() {
     canvas.width = width;
     canvas.height = height;
     layoutPlants();
+
+    // Reinitialize ambient effects for new dimensions
+    if (plants.length > 0) {
+        initAmbientEffects();
+    }
 }
 
 window.addEventListener('resize', resizeCanvas);
@@ -559,16 +1013,27 @@ class Plant {
         this.age = calculateHealthFromActivity(this.lastActiveTime);
         this.previousAge = this.age; // Track for animations
         this.sway = Math.random() * Math.PI * 2; // Random start phase
-        this.swaySpeed = 0.02 + Math.random() * 0.02;
+        this.swaySpeed = 0.015 + Math.random() * 0.02; // Slower, more varied sway
 
         // Growth animation state
         this.growthScale = 1;
         this.growthTarget = 1;
 
+        // Organic variation - each plant is slightly different
+        this.scaleVariation = 0.85 + Math.random() * 0.3; // 0.85 to 1.15
+        this.offsetX = (Math.random() - 0.5) * 25; // Random position offset
+        this.offsetY = (Math.random() - 0.5) * 15;
+        this.rotationOffset = (Math.random() - 0.5) * 0.1; // Slight lean
+
         // Pre-generate random values for consistent rendering
         this.spotOffsets = Array(6).fill(0).map(() => (Math.random() - 0.5) * 0.6);
         this.spotSizes = Array(6).fill(0).map(() => 0.8 + Math.random() * 0.5);
         this.stamenLengths = Array(6).fill(0).map(() => 6 + Math.random() * 2);
+
+        // Extra visual flair
+        this.hasButterfly = Math.random() < 0.1; // 10% chance to attract a butterfly
+        this.glowIntensity = 0;
+        this.targetGlow = 0;
     }
 
     // Update health based on current time, with animation triggers
@@ -606,24 +1071,55 @@ class Plant {
 
         // Smooth growth animation
         this.growthScale += (this.growthTarget - this.growthScale) * 0.1;
+
+        // Smooth glow transition
+        this.glowIntensity += (this.targetGlow - this.glowIntensity) * 0.15;
     }
 
     draw() {
-        const swayOffset = Math.sin(this.sway) * 3;
+        const swayOffset = Math.sin(this.sway) * 4; // Slightly more sway
         const isHovered = this === hoveredPlant;
         const isWilted = this.age >= 0.7;
 
+        // Update glow target based on hover
+        this.targetGlow = isHovered ? 1 : 0;
+
+        // Draw shadow first (before plant)
+        drawPlantShadow(this.x + this.offsetX, this.y + this.offsetY, this.scaleVariation);
+
         ctx.save();
-        ctx.translate(this.x, this.y);
+        ctx.translate(this.x + this.offsetX, this.y + this.offsetY);
 
-        // Apply growth animation scale
-        const baseScale = SCALE * this.growthScale;
+        // Apply slight rotation for organic feel
+        ctx.rotate(this.rotationOffset);
 
-        // Apply hover effects
-        if (isHovered) {
-            ctx.scale(baseScale * 1.15, baseScale * 1.15);
-            ctx.shadowColor = 'rgba(255, 183, 197, 0.6)';
-            ctx.shadowBlur = 15;
+        // Apply growth animation scale with individual variation
+        const baseScale = SCALE * this.growthScale * this.scaleVariation;
+
+        // Apply hover effects with warm golden glow
+        if (isHovered || this.glowIntensity > 0.01) {
+            const glowAmount = this.glowIntensity;
+            const hoverScale = 1 + glowAmount * 0.2; // Scale up to 1.2x
+
+            ctx.scale(baseScale * hoverScale, baseScale * hoverScale);
+
+            // Warm golden glow (layered for richness)
+            ctx.shadowColor = `rgba(255, 200, 120, ${0.8 * glowAmount})`;
+            ctx.shadowBlur = 25 * glowAmount;
+
+            // Draw outer glow halo
+            if (glowAmount > 0.1) {
+                ctx.save();
+                const glowGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 50);
+                glowGradient.addColorStop(0, `rgba(255, 220, 150, ${0.4 * glowAmount})`);
+                glowGradient.addColorStop(0.5, `rgba(255, 183, 197, ${0.2 * glowAmount})`);
+                glowGradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = glowGradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, 50, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
         } else {
             ctx.scale(baseScale, baseScale);
         }
@@ -916,6 +1412,9 @@ async function initGarden() {
     setupOnboarding();
     await checkOnboarding();
 
+    // Initialize ambient effects (fireflies, butterflies)
+    initAmbientEffects();
+
     // Update plant health every 10 seconds
     setInterval(updateAllPlantHealth, 10000);
 
@@ -997,7 +1496,28 @@ async function harvestDormantTabs() {
 }
 
 function loop() {
-    ctx.clearRect(0, 0, width, height);
+    frameCount++;
+
+    // Draw beautiful background (sunset gradient, light pools, vignette)
+    drawBackground();
+
+    // Draw soft clouds drifting across sky
+    clouds.forEach(cloud => {
+        cloud.update();
+        cloud.draw(ctx);
+    });
+
+    // Draw ambient particles (fireflies) behind plants
+    ambientParticles.forEach(particle => {
+        particle.update();
+        particle.draw(ctx);
+    });
+
+    // Draw butterflies behind plants
+    butterflies.forEach(butterfly => {
+        butterfly.update();
+        butterfly.draw(ctx);
+    });
 
     // Draw plants
     plants.forEach(plant => {
@@ -1005,39 +1525,111 @@ function loop() {
         plant.draw();
     });
 
-    // Update and draw particles
+    // Update and draw burst particles (on top of everything)
     for (let i = particles.length - 1; i >= 0; i--) {
         const p = particles[i];
         p.x += p.vx;
         p.y += p.vy;
-        p.vy += p.isSparkle ? 0.02 : 0.15; // stronger gravity for nice arc
+        p.vy += p.isSparkle ? 0.02 : 0.1; // gentler gravity for floatier feel
+        p.vx *= 0.99; // gentle air resistance
         p.life--;
+
+        // Update rotation if present
+        if (p.rotation !== undefined) {
+            p.rotation += p.rotationSpeed || 0;
+        }
 
         if (p.life <= 0) {
             particles.splice(i, 1);
             continue;
         }
 
-        const maxLife = p.isSparkle ? 40 : 90;
-        ctx.globalAlpha = p.isSparkle ? p.life / maxLife : Math.pow(p.life / maxLife, 1.5); // faster fade at end
+        const maxLife = p.isSparkle ? 80 : 110;
+        ctx.globalAlpha = p.isSparkle ? p.life / maxLife : Math.pow(p.life / maxLife, 1.3);
 
         if (p.isSparkle) {
-            // Twinkling sparkle effect
+            // Twinkling sparkle effect with glow
             const twinkle = Math.sin(p.life * 0.5) * 0.5 + 0.5;
             ctx.globalAlpha *= twinkle;
+
+            // Add warm glow to sparkles
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 10;
+
             ctx.fillStyle = p.color;
             ctx.beginPath();
             ctx.arc(p.x, p.y, p.size * twinkle, 0, Math.PI * 2);
             ctx.fill();
+
+            ctx.shadowBlur = 0;
         } else {
-            // Regular petal particles
+            // Petal particles with rotation and soft glow
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            if (p.rotation !== undefined) {
+                ctx.rotate(p.rotation);
+            }
+
+            // Add subtle glow
+            ctx.shadowColor = p.color;
+            ctx.shadowBlur = 5;
+
             ctx.fillStyle = p.color;
-            ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+
+            // Draw as petal shape
+            ctx.beginPath();
+            ctx.ellipse(0, 0, p.size * 0.5, p.size, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
         }
     }
     ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+
+    // Optional: Draw scanline overlay for pixel-art feel (subtle)
+    if (window.enableScanlines) {
+        drawScanlines();
+    }
 
     requestAnimationFrame(loop);
+}
+
+// Subtle scanline effect for retro pixel-art feel
+function drawScanlines() {
+    ctx.save();
+    ctx.globalAlpha = 0.03;
+    ctx.fillStyle = '#000';
+
+    for (let y = 0; y < height; y += 3) {
+        ctx.fillRect(0, y, width, 1);
+    }
+
+    ctx.restore();
+}
+
+// Initialize ambient particles, butterflies, and clouds
+function initAmbientEffects() {
+    // Create fireflies/sparkles
+    const particleCount = Math.floor((width * height) / 15000); // Density based on area
+    ambientParticles = [];
+    for (let i = 0; i < Math.max(15, particleCount); i++) {
+        ambientParticles.push(new AmbientParticle());
+    }
+
+    // Create butterflies (2-4 based on garden size)
+    const butterflyCount = Math.min(4, Math.max(2, Math.floor(plants.length / 5)));
+    butterflies = [];
+    for (let i = 0; i < butterflyCount; i++) {
+        butterflies.push(new Butterfly());
+    }
+
+    // Create soft drifting clouds (3-5)
+    const cloudCount = 3 + Math.floor(Math.random() * 3);
+    clouds = [];
+    for (let i = 0; i < cloudCount; i++) {
+        clouds.push(new Cloud());
+    }
 }
 
 resizeCanvas();
