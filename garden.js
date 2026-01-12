@@ -213,6 +213,7 @@ class Butterfly {
                 this.y = randomPlant.y - 30;
                 this.isResting = true;
                 this.restTimer = 60 + Math.random() * 120;
+                AudioSystem.playButterflyFlutter(); // Soft landing sound
             } else {
                 this.targetX = Math.random() * width;
                 this.targetY = Math.random() * height * 0.7;
@@ -301,6 +302,166 @@ class Butterfly {
         ctx.restore();
     }
 }
+
+// ============================================
+// Autumn Falling Leaves
+// ============================================
+class AutumnLeaf {
+    constructor() {
+        this.reset(true);
+    }
+
+    reset(initial = false) {
+        this.x = Math.random() * width;
+        this.y = initial ? Math.random() * height : -20;
+        this.size = 6 + Math.random() * 8;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.08;
+        this.fallSpeed = 0.3 + Math.random() * 0.5;
+        this.swayPhase = Math.random() * Math.PI * 2;
+        this.swaySpeed = 0.02 + Math.random() * 0.02;
+        this.swayAmount = 1 + Math.random() * 2;
+        this.color = ['#D2691E', '#CD853F', '#B8860B', '#DAA520', '#FF8C00', '#A0522D'][Math.floor(Math.random() * 6)];
+        this.alpha = 0.7 + Math.random() * 0.3;
+    }
+
+    update() {
+        this.y += this.fallSpeed;
+        this.swayPhase += this.swaySpeed;
+        this.x += Math.sin(this.swayPhase) * this.swayAmount * 0.1;
+        this.rotation += this.rotationSpeed;
+
+        if (this.y > height + 20) {
+            this.reset();
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+        ctx.globalAlpha = this.alpha;
+
+        // Draw leaf shape
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, this.size * 0.4, this.size, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Leaf vein
+        ctx.strokeStyle = 'rgba(0,0,0,0.2)';
+        ctx.lineWidth = 0.5;
+        ctx.beginPath();
+        ctx.moveTo(0, -this.size);
+        ctx.lineTo(0, this.size);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+}
+
+// ============================================
+// Winter Snowflakes
+// ============================================
+class Snowflake {
+    constructor() {
+        this.reset(true);
+    }
+
+    reset(initial = false) {
+        this.x = Math.random() * width;
+        this.y = initial ? Math.random() * height : -10;
+        this.size = 2 + Math.random() * 4;
+        this.fallSpeed = 0.2 + Math.random() * 0.4;
+        this.swayPhase = Math.random() * Math.PI * 2;
+        this.swaySpeed = 0.01 + Math.random() * 0.02;
+        this.alpha = 0.5 + Math.random() * 0.5;
+        this.twinklePhase = Math.random() * Math.PI * 2;
+    }
+
+    update() {
+        this.y += this.fallSpeed;
+        this.swayPhase += this.swaySpeed;
+        this.x += Math.sin(this.swayPhase) * 0.5;
+        this.twinklePhase += 0.05;
+
+        if (this.y > height + 10) {
+            this.reset();
+        }
+    }
+
+    draw(ctx) {
+        ctx.save();
+        ctx.globalAlpha = this.alpha * (0.7 + Math.sin(this.twinklePhase) * 0.3);
+
+        // Soft glow
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 2);
+        gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+        gradient.addColorStop(0.5, 'rgba(200, 220, 255, 0.4)');
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bright core
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+}
+
+// ============================================
+// Summer Sun Rays
+// ============================================
+let sunRayPhase = 0;
+function drawSunRays(ctx) {
+    sunRayPhase += 0.01;
+    const pulseIntensity = 0.5 + Math.sin(sunRayPhase) * 0.3;
+
+    ctx.save();
+
+    const sunX = width * 0.75;
+    const sunY = height * 0.1;
+
+    // Draw pulsing rays
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2 + sunRayPhase * 0.2;
+        const rayLength = height * 0.6 * pulseIntensity;
+
+        const gradient = ctx.createLinearGradient(
+            sunX, sunY,
+            sunX + Math.cos(angle) * rayLength,
+            sunY + Math.sin(angle) * rayLength
+        );
+        gradient.addColorStop(0, `rgba(255, 220, 100, ${0.15 * pulseIntensity})`);
+        gradient.addColorStop(0.5, `rgba(255, 200, 80, ${0.08 * pulseIntensity})`);
+        gradient.addColorStop(1, 'transparent');
+
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.moveTo(sunX, sunY);
+        ctx.lineTo(
+            sunX + Math.cos(angle - 0.1) * rayLength,
+            sunY + Math.sin(angle - 0.1) * rayLength
+        );
+        ctx.lineTo(
+            sunX + Math.cos(angle + 0.1) * rayLength,
+            sunY + Math.sin(angle + 0.1) * rayLength
+        );
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    ctx.restore();
+}
+
+// Seasonal particles storage
+let seasonalParticles = [];
 
 // ============================================
 // Web Audio API Sound System (ASMR Sounds)
@@ -417,6 +578,38 @@ const AudioSystem = {
 
         osc.start(this.ctx.currentTime);
         osc.stop(this.ctx.currentTime + 0.1);
+    },
+
+    // Ultra-soft butterfly wing flutter (ASMR)
+    playButterflyFlutter() {
+        this.ensureContext();
+        // Create soft fluttering with rapid tiny oscillations
+        const bufferSize = this.ctx.sampleRate * 0.08;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+
+        // Gentle flutter pattern
+        for (let i = 0; i < bufferSize; i++) {
+            const flutter = Math.sin(i * 0.15) * Math.sin(i * 0.02);
+            data[i] = flutter * Math.pow(1 - i / bufferSize, 1.5) * 0.3;
+        }
+
+        const source = this.ctx.createBufferSource();
+        const filter = this.ctx.createBiquadFilter();
+        const gain = this.ctx.createGain();
+
+        source.buffer = buffer;
+        filter.type = 'highpass';
+        filter.frequency.value = 800;
+
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+
+        gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.08);
+
+        source.start();
     }
 };
 
@@ -493,63 +686,76 @@ function applySeason() {
 }
 
 // ============================================
-// Screenshot & Share Feature
+// Screenshot & Share Feature (One-Click Share Tour)
 // ============================================
 async function captureGardenScreenshot() {
-    // Create a temporary canvas for the screenshot
-    const shareCanvas = document.createElement('canvas');
-    const shareCtx = shareCanvas.getContext('2d');
-
-    shareCanvas.width = canvas.width;
-    shareCanvas.height = canvas.height + 80; // Extra space for stats
-
-    // Fill background
-    const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    shareCtx.fillStyle = isDark ? '#1a1a1a' : '#F9F5EB';
-    shareCtx.fillRect(0, 0, shareCanvas.width, shareCanvas.height);
-
-    // Draw the garden canvas
-    shareCtx.drawImage(canvas, 0, 0);
-
-    // Add stats overlay at bottom
     const bloomingCount = plants.filter(p => p.age < 0.3).length;
-    const wiltedCount = plants.filter(p => p.age >= 0.7).length;
+    const season = getCurrentSeason();
+    const seasonEmoji = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' }[season];
 
-    shareCtx.fillStyle = isDark ? 'rgba(40, 40, 40, 0.9)' : 'rgba(255, 255, 255, 0.9)';
-    shareCtx.fillRect(0, canvas.height, shareCanvas.width, 80);
-
-    shareCtx.font = 'bold 16px -apple-system, BlinkMacSystemFont, sans-serif';
-    shareCtx.fillStyle = isDark ? '#7CB97A' : '#4A7043';
-    shareCtx.textAlign = 'center';
-    shareCtx.fillText('TabBloom Garden', shareCanvas.width / 2, canvas.height + 30);
-
-    shareCtx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
-    shareCtx.fillStyle = isDark ? '#a0a0a0' : '#86868b';
-    shareCtx.fillText(
-        `${plants.length} tabs | ${bloomingCount} blooming | ${wiltedCount} wilted | ${currentCoins} coins`,
-        shareCanvas.width / 2,
-        canvas.height + 55
-    );
-
-    // Convert to blob and copy/download
     try {
-        const blob = await new Promise(resolve => shareCanvas.toBlob(resolve, 'image/png'));
+        // Use html2canvas to capture the entire garden container
+        const gardenContainer = document.getElementById('garden-container');
+        const capturedCanvas = await html2canvas(gardenContainer, {
+            backgroundColor: null,
+            scale: 2, // Higher resolution
+            logging: false
+        });
 
-        // Try to copy to clipboard first
+        // Create final canvas with text overlay
+        const finalCanvas = document.createElement('canvas');
+        const finalCtx = finalCanvas.getContext('2d');
+
+        finalCanvas.width = capturedCanvas.width;
+        finalCanvas.height = capturedCanvas.height + 100;
+
+        // Draw captured garden
+        finalCtx.drawImage(capturedCanvas, 0, 0);
+
+        // Add beautiful footer overlay
+        const gradient = finalCtx.createLinearGradient(0, capturedCanvas.height, 0, finalCanvas.height);
+        gradient.addColorStop(0, 'rgba(255, 249, 245, 0.95)');
+        gradient.addColorStop(1, 'rgba(255, 236, 210, 0.95)');
+        finalCtx.fillStyle = gradient;
+        finalCtx.fillRect(0, capturedCanvas.height, finalCanvas.width, 100);
+
+        // Main title
+        finalCtx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
+        finalCtx.fillStyle = '#5D7A4A';
+        finalCtx.textAlign = 'center';
+        finalCtx.fillText(`My TabBloom Garden ${seasonEmoji}`, finalCanvas.width / 2, capturedCanvas.height + 40);
+
+        // Stats line
+        finalCtx.font = '18px -apple-system, BlinkMacSystemFont, sans-serif';
+        finalCtx.fillStyle = '#7A6B5A';
+        finalCtx.fillText(
+            `✨ ${currentCoins} coins  •  🌷 ${bloomingCount} blooming  •  🌿 ${plants.length} tabs`,
+            finalCanvas.width / 2,
+            capturedCanvas.height + 70
+        );
+
+        // Watermark
+        finalCtx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+        finalCtx.fillStyle = '#B8A898';
+        finalCtx.fillText('tabbloom.app', finalCanvas.width / 2, capturedCanvas.height + 92);
+
+        // Convert to blob
+        const blob = await new Promise(resolve => finalCanvas.toBlob(resolve, 'image/png'));
+
+        // Try clipboard first, then download
         if (navigator.clipboard && navigator.clipboard.write) {
             await navigator.clipboard.write([
                 new ClipboardItem({ 'image/png': blob })
             ]);
-            showShareFeedback('Copied to clipboard!');
+            showShareFeedback('Copied! Share away 🌱');
         } else {
-            // Fallback: download the image
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
             a.download = `tabbloom-garden-${Date.now()}.png`;
             a.click();
             URL.revokeObjectURL(url);
-            showShareFeedback('Downloaded!');
+            showShareFeedback('Downloaded! 🌱');
         }
 
         AudioSystem.playHarvestChime();
@@ -1501,6 +1707,11 @@ function loop() {
     // Draw beautiful background (sunset gradient, light pools, vignette)
     drawBackground();
 
+    // Summer: Draw pulsing sun rays
+    if (getCurrentSeason() === 'summer') {
+        drawSunRays(ctx);
+    }
+
     // Draw soft clouds drifting across sky
     clouds.forEach(cloud => {
         cloud.update();
@@ -1517,6 +1728,12 @@ function loop() {
     butterflies.forEach(butterfly => {
         butterfly.update();
         butterfly.draw(ctx);
+    });
+
+    // Draw seasonal particles (autumn leaves, winter snowflakes)
+    seasonalParticles.forEach(particle => {
+        particle.update();
+        particle.draw(ctx);
     });
 
     // Draw plants
@@ -1610,25 +1827,46 @@ function drawScanlines() {
 
 // Initialize ambient particles, butterflies, and clouds
 function initAmbientEffects() {
+    const season = getCurrentSeason();
+
     // Create fireflies/sparkles
-    const particleCount = Math.floor((width * height) / 15000); // Density based on area
+    const particleCount = Math.floor((width * height) / 15000);
     ambientParticles = [];
     for (let i = 0; i < Math.max(15, particleCount); i++) {
         ambientParticles.push(new AmbientParticle());
     }
 
-    // Create butterflies (2-4 based on garden size)
-    const butterflyCount = Math.min(4, Math.max(2, Math.floor(plants.length / 5)));
+    // Create butterflies - more in spring!
+    const baseButterflyCount = Math.min(4, Math.max(2, Math.floor(plants.length / 5)));
+    const butterflyCount = season === 'spring' ? baseButterflyCount + 3 :
+                           season === 'summer' ? baseButterflyCount + 1 :
+                           season === 'winter' ? 0 : baseButterflyCount;
     butterflies = [];
     for (let i = 0; i < butterflyCount; i++) {
         butterflies.push(new Butterfly());
     }
 
-    // Create soft drifting clouds (3-5)
-    const cloudCount = 3 + Math.floor(Math.random() * 3);
+    // Create soft drifting clouds
+    const cloudCount = season === 'winter' ? 5 : 3 + Math.floor(Math.random() * 3);
     clouds = [];
     for (let i = 0; i < cloudCount; i++) {
         clouds.push(new Cloud());
+    }
+
+    // Create seasonal particles
+    seasonalParticles = [];
+    if (season === 'autumn') {
+        // Falling orange leaves
+        const leafCount = 15 + Math.floor(Math.random() * 10);
+        for (let i = 0; i < leafCount; i++) {
+            seasonalParticles.push(new AutumnLeaf());
+        }
+    } else if (season === 'winter') {
+        // Soft snowflakes
+        const snowCount = 30 + Math.floor(Math.random() * 20);
+        for (let i = 0; i < snowCount; i++) {
+            seasonalParticles.push(new Snowflake());
+        }
     }
 }
 
