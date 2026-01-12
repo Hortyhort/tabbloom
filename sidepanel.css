@@ -112,6 +112,7 @@ body, html {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  position: relative; /* For absolute positioning of quick-actions */
 }
 
 .garden-header {
@@ -192,10 +193,56 @@ body, html {
 #garden-container {
   background-image: radial-gradient(var(--grid-color) 1px, transparent 1px);
   background-size: 20px 20px;
+  scroll-behavior: smooth;
+}
+
+/* Custom scrollbar for garden */
+#garden-container::-webkit-scrollbar {
+  width: 8px;
+}
+
+#garden-container::-webkit-scrollbar-track {
+  background: rgba(93, 122, 74, 0.1);
+  border-radius: 4px;
+}
+
+#garden-container::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--primary-green), var(--soft-sage));
+  border-radius: 4px;
+}
+
+#garden-container::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-green);
 }
 
 #garden-canvas {
   display: block;
+  min-height: 100%;
+}
+
+/* Scroll hint fade at bottom when more content */
+.scroll-hint {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 50px;
+  margin-top: -50px; /* Overlap with content */
+  background: linear-gradient(to top, var(--warm-beige) 20%, transparent);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  z-index: 10;
+}
+
+.scroll-hint.visible {
+  opacity: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  .scroll-hint {
+    background: linear-gradient(to top, var(--warm-beige) 20%, transparent);
+  }
 }
 
 .glass-tooltip {
@@ -285,7 +332,7 @@ body, html {
 
 #quick-actions {
   position: absolute;
-  bottom: 16px;
+  bottom: 80px; /* Above the footer */
   right: 16px;
   display: flex;
   gap: 8px;

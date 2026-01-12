@@ -1435,10 +1435,28 @@ function bloomParticles(x, y, count = 40) {
     }
 }
 
-// Set canvas to fill the container responsively
+// Calculate required canvas height based on plant count
+function calculateRequiredHeight(containerHeight, containerWidth) {
+    if (plants.length === 0) return containerHeight;
+
+    const cols = Math.max(1, Math.floor(containerWidth / SPACING));
+    const rows = Math.ceil(plants.length / cols);
+    const PADDING_TOP = 60;  // Space at top for visual breathing room
+    const PADDING_BOTTOM = 80; // Space at bottom
+
+    const requiredHeight = PADDING_TOP + (rows * SPACING) + PADDING_BOTTOM;
+    return Math.max(containerHeight, requiredHeight);
+}
+
+// Set canvas to fill the container responsively (with dynamic height for scrolling)
 function resizeCanvas() {
-    width = canvas.parentElement.clientWidth;
-    height = canvas.parentElement.clientHeight;
+    const container = canvas.parentElement;
+    const containerWidth = container.clientWidth;
+    const containerHeight = container.clientHeight;
+
+    width = containerWidth;
+    height = calculateRequiredHeight(containerHeight, containerWidth);
+
     canvas.width = width;
     canvas.height = height;
     layoutPlants();
@@ -1450,6 +1468,28 @@ function resizeCanvas() {
 }
 
 window.addEventListener('resize', resizeCanvas);
+
+// Scroll hint visibility - show when more content is below
+const gardenContainerEl = document.getElementById('garden-container');
+const scrollHint = document.getElementById('scroll-hint');
+
+function updateScrollHint() {
+    if (!gardenContainerEl || !scrollHint) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = gardenContainerEl;
+    const isScrollable = scrollHeight > clientHeight;
+    const isAtBottom = scrollTop + clientHeight >= scrollHeight - 20;
+
+    if (isScrollable && !isAtBottom) {
+        scrollHint.classList.add('visible');
+    } else {
+        scrollHint.classList.remove('visible');
+    }
+}
+
+gardenContainerEl?.addEventListener('scroll', updateScrollHint);
+// Initial check after layout
+setTimeout(updateScrollHint, 500);
 
 // Canvas mouse tracking for hover effects
 canvas.addEventListener('mousemove', (e) => {
@@ -1538,17 +1578,14 @@ canvas.addEventListener('click', async (e) => {
 function layoutPlants() {
     if (plants.length === 0) return;
 
-    const centerX = width / 2;
-    const centerY = height / 2;
-
     const cols = Math.max(1, Math.floor(width / SPACING));
-    const rows = Math.max(1, Math.ceil(plants.length / cols));
+    const rows = Math.ceil(plants.length / cols);
 
-    // Calculate grid dimensions to center it
+    // Center horizontally, but flow from top down for scrolling
     const gridWidth = Math.min(plants.length, cols) * SPACING;
-    const gridHeight = rows * SPACING;
-    const startX = centerX - gridWidth / 2 + SPACING / 2;
-    const startY = centerY - gridHeight / 2 + SPACING / 2;
+    const startX = (width - gridWidth) / 2 + SPACING / 2;
+    const PADDING_TOP = 60; // Match the padding in calculateRequiredHeight
+    const startY = PADDING_TOP + SPACING / 2;
 
     plants.forEach((plant, index) => {
         const col = index % cols;
@@ -1562,6 +1599,17 @@ function layoutPlants() {
             plant.element.style.top = `${plant.y - PLANT_HEIGHT / 2}px`;
         }
     });
+
+    // Trigger canvas resize if plant count changed significantly
+    const container = canvas.parentElement;
+    const requiredHeight = calculateRequiredHeight(container.clientHeight, container.clientWidth);
+    if (Math.abs(canvas.height - requiredHeight) > SPACING) {
+        canvas.height = requiredHeight;
+        height = requiredHeight;
+    }
+
+    // Update scroll hint after layout changes
+    setTimeout(updateScrollHint, 100);
 }
 
 // Calculate plant health based on time since last activity

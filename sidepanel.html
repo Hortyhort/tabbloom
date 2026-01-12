@@ -86,17 +86,18 @@
       </div>
     </header>
 
-    <div id="garden-container" style="flex: 1; position: relative; overflow: hidden;">
+    <div id="garden-container" style="flex: 1; position: relative; overflow-y: auto; overflow-x: hidden;">
       <canvas id="garden-canvas"></canvas>
       <div id="tooltip" class="glass-tooltip hidden"></div>
+      <div id="scroll-hint" class="scroll-hint"></div>
+    </div>
 
-      <!-- Quick Actions Mini-Bar -->
-      <div id="quick-actions">
-        <button id="quickHarvest" title="Harvest All Dormant">🌾</button>
-        <button id="quickRefresh" title="Refresh Garden">🔄</button>
-        <button id="quickShare" title="Share Garden">📸</button>
-        <button id="quickSettings" title="Settings">⚙️</button>
-      </div>
+    <!-- Quick Actions Mini-Bar (outside scroll container to stay fixed) -->
+    <div id="quick-actions">
+      <button id="quickHarvest" title="Harvest All Dormant">🌾</button>
+      <button id="quickRefresh" title="Refresh Garden">🔄</button>
+      <button id="quickShare" title="Share Garden">📸</button>
+      <button id="quickSettings" title="Settings">⚙️</button>
     </div>
 
     <footer class="garden-footer">
