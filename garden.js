@@ -219,6 +219,49 @@ class Plant {
         }
 
         ctx.restore();
+
+        // Draw centered domain name below the flower
+        try {
+            const text = new URL(this.url).hostname.replace('www.', '');
+            ctx.save();
+            ctx.shadowColor = 'rgba(0,0,0,0.2)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 1;
+            ctx.shadowOffsetY = 1;
+            const fontSize = Math.min(16, canvas.width / 30); // scales with panel width
+            ctx.font = `${fontSize}px system-ui, sans-serif`;
+            ctx.fillStyle = COLORS.healthy;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+
+            const textY = this.y + 50;
+            const maxWidth = 90;
+
+            // Wrap to two lines if too long
+            if (ctx.measureText(text).width > maxWidth) {
+                const parts = text.split('.');
+                let line1 = '';
+                let line2 = '';
+                parts.forEach((part, i) => {
+                    const segment = i < parts.length - 1 ? part + '.' : part;
+                    if (ctx.measureText(line1 + segment).width < maxWidth) {
+                        line1 += segment;
+                    } else {
+                        line2 += segment;
+                    }
+                });
+                ctx.fillText(line1.trim(), this.x, textY);
+                if (line2) {
+                    ctx.fillText(line2.trim(), this.x, textY + 16);
+                }
+            } else {
+                ctx.fillText(text, this.x, textY);
+            }
+
+            ctx.restore();
+        } catch (e) {
+            // Skip text for invalid URLs
+        }
     }
 }
 
