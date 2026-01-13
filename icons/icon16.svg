@@ -6,19 +6,20 @@
     </linearGradient>
   </defs>
 
-  <!-- Rounded square background -->
-  <rect x="1" y="1" width="14" height="14" rx="3" ry="3" fill="url(#bg16)"/>
+  <!-- Background -->
+  <rect x="1" y="1" width="14" height="14" rx="3" fill="url(#bg16)"/>
 
-  <!-- Simple 5-petal flower using circles - pixel perfect at 16px -->
-  <g transform="translate(8, 8)">
-    <!-- 5 circular petals arranged as flower -->
-    <circle cx="0" cy="-4" r="2.5" fill="white"/>
-    <circle cx="3.8" cy="-1.2" r="2.3" fill="white"/>
-    <circle cx="2.4" cy="3.2" r="2.3" fill="white"/>
-    <circle cx="-2.4" cy="3.2" r="2.3" fill="white"/>
-    <circle cx="-3.8" cy="-1.2" r="2.3" fill="white"/>
+  <!-- Lily outline - simplified for 16px -->
+  <g transform="translate(8, 9)" fill="none" stroke="white" stroke-width="1.2" stroke-linecap="round">
+    <!-- 6 petals as simple curves -->
+    <path d="M0 0 C-0.8 -2, -1.2 -4, -0.3 -5 Q0 -5.5, 0.3 -5 C1.2 -4, 0.8 -2, 0 0" transform="rotate(0)"/>
+    <path d="M0 0 C-0.8 -2, -1.2 -4, -0.3 -5 Q0 -5.5, 0.3 -5 C1.2 -4, 0.8 -2, 0 0" transform="rotate(60)"/>
+    <path d="M0 0 C-0.8 -2, -1.2 -4, -0.3 -5 Q0 -5.5, 0.3 -5 C1.2 -4, 0.8 -2, 0 0" transform="rotate(120)"/>
+    <path d="M0 0 C-0.8 -2, -1.2 -4, -0.3 -5 Q0 -5.5, 0.3 -5 C1.2 -4, 0.8 -2, 0 0" transform="rotate(180)"/>
+    <path d="M0 0 C-0.8 -2, -1.2 -4, -0.3 -5 Q0 -5.5, 0.3 -5 C1.2 -4, 0.8 -2, 0 0" transform="rotate(240)"/>
+    <path d="M0 0 C-0.8 -2, -1.2 -4, -0.3 -5 Q0 -5.5, 0.3 -5 C1.2 -4, 0.8 -2, 0 0" transform="rotate(300)"/>
 
-    <!-- Bold golden center -->
-    <circle cx="0" cy="0" r="2.5" fill="#FFB300"/>
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="1.5" fill="white" stroke="none"/>
   </g>
 </svg>

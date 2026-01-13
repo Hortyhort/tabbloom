@@ -1,90 +1,27 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
-    <!-- Fresh teal-to-green gradient - unique, nature-forward -->
     <linearGradient id="bg128" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" stop-color="#00B894"/>
       <stop offset="100%" stop-color="#00D9A5"/>
     </linearGradient>
-
-    <!-- Golden center -->
-    <radialGradient id="gold128" cx="50%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#FFF8E1"/>
-      <stop offset="50%" stop-color="#FFD54F"/>
-      <stop offset="100%" stop-color="#FFB300"/>
-    </radialGradient>
-
-    <!-- Subtle shadow -->
-    <filter id="shadow128">
-      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"/>
-    </filter>
   </defs>
 
-  <!-- Squircle background -->
-  <rect x="4" y="4" width="120" height="120" rx="27" ry="27" fill="url(#bg128)"/>
+  <!-- Background -->
+  <rect x="4" y="4" width="120" height="120" rx="27" fill="url(#bg128)"/>
 
-  <!-- Subtle top-left highlight -->
-  <ellipse cx="38" cy="38" rx="28" ry="22" fill="white" opacity="0.12"/>
+  <!-- Lily outline - 6 recurved petals as strokes -->
+  <g transform="translate(64, 70)" fill="none" stroke="white" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Back 3 petals -->
+    <path d="M0 0 C-4 -12, -6 -28, -1.5 -40 Q0 -44, 1.5 -40 C6 -28, 4 -12, 0 0" transform="rotate(0)"/>
+    <path d="M0 0 C-4 -12, -6 -28, -1.5 -40 Q0 -44, 1.5 -40 C6 -28, 4 -12, 0 0" transform="rotate(120)"/>
+    <path d="M0 0 C-4 -12, -6 -28, -1.5 -40 Q0 -44, 1.5 -40 C6 -28, 4 -12, 0 0" transform="rotate(240)"/>
 
-  <!-- THE KEY CONCEPT: 5 tab-shaped petals arranged as flower -->
-  <g transform="translate(64, 62)" filter="url(#shadow128)">
+    <!-- Front 3 petals (slightly smaller) -->
+    <path d="M0 0 C-3.6 -11, -5.4 -25, -1.4 -36 Q0 -40, 1.4 -36 C5.4 -25, 3.6 -11, 0 0" transform="rotate(60)"/>
+    <path d="M0 0 C-3.6 -11, -5.4 -25, -1.4 -36 Q0 -40, 1.4 -36 C5.4 -25, 3.6 -11, 0 0" transform="rotate(180)"/>
+    <path d="M0 0 C-3.6 -11, -5.4 -25, -1.4 -36 Q0 -40, 1.4 -36 C5.4 -25, 3.6 -11, 0 0" transform="rotate(300)"/>
 
-    <!-- Each petal is a BROWSER TAB shape: rounded top, flat bottom -->
-    <!-- Petal 1 - Top -->
-    <path d="M-12 -20
-             Q-12 -44 0 -50
-             Q12 -44 12 -20
-             L8 -8
-             Q0 -4 -8 -8
-             Z"
-          fill="white" transform="rotate(0)"/>
-
-    <!-- Petal 2 - Top Right -->
-    <path d="M-11 -19
-             Q-11 -42 0 -48
-             Q11 -42 11 -19
-             L7 -8
-             Q0 -4 -7 -8
-             Z"
-          fill="white" opacity="0.95" transform="rotate(72)"/>
-
-    <!-- Petal 3 - Bottom Right -->
-    <path d="M-11 -18
-             Q-11 -40 0 -46
-             Q11 -40 11 -18
-             L7 -7
-             Q0 -3 -7 -7
-             Z"
-          fill="white" opacity="0.9" transform="rotate(144)"/>
-
-    <!-- Petal 4 - Bottom Left -->
-    <path d="M-11 -18
-             Q-11 -40 0 -46
-             Q11 -40 11 -18
-             L7 -7
-             Q0 -3 -7 -7
-             Z"
-          fill="white" opacity="0.9" transform="rotate(216)"/>
-
-    <!-- Petal 5 - Top Left -->
-    <path d="M-11 -19
-             Q-11 -42 0 -48
-             Q11 -42 11 -19
-             L7 -8
-             Q0 -4 -7 -8
-             Z"
-          fill="white" opacity="0.95" transform="rotate(288)"/>
-
-    <!-- Golden center circle -->
-    <circle cx="0" cy="0" r="14" fill="url(#gold128)"/>
-
-    <!-- Center texture - tiny dots -->
-    <circle cx="-4" cy="-4" r="2" fill="#FFB300" opacity="0.5"/>
-    <circle cx="4" cy="-3" r="2" fill="#FFB300" opacity="0.4"/>
-    <circle cx="0" cy="5" r="2" fill="#FFB300" opacity="0.5"/>
-    <circle cx="-5" cy="3" r="1.5" fill="#FFB300" opacity="0.3"/>
-    <circle cx="5" cy="4" r="1.5" fill="#FFB300" opacity="0.3"/>
-
-    <!-- Bright highlight -->
-    <circle cx="-3" cy="-4" r="4" fill="white" opacity="0.45"/>
+    <!-- Center circle -->
+    <circle cx="0" cy="0" r="8" fill="white" stroke="none"/>
   </g>
 </svg>

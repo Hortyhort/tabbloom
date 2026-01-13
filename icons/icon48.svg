@@ -4,29 +4,22 @@
       <stop offset="0%" stop-color="#00B894"/>
       <stop offset="100%" stop-color="#00D9A5"/>
     </linearGradient>
-    <radialGradient id="gold48" cx="50%" cy="35%" r="65%">
-      <stop offset="0%" stop-color="#FFF8E1"/>
-      <stop offset="100%" stop-color="#FFB300"/>
-    </radialGradient>
   </defs>
 
-  <!-- Squircle background -->
-  <rect x="2" y="2" width="44" height="44" rx="10" ry="10" fill="url(#bg48)"/>
+  <!-- Background -->
+  <rect x="2" y="2" width="44" height="44" rx="10" fill="url(#bg48)"/>
 
-  <!-- Subtle highlight -->
-  <ellipse cx="15" cy="15" rx="10" ry="8" fill="white" opacity="0.1"/>
+  <!-- Lily outline -->
+  <g transform="translate(24, 26)" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <!-- 6 petals -->
+    <path d="M0 0 C-1.5 -4.5, -2.3 -10.5, -0.6 -15 Q0 -16.5, 0.6 -15 C2.3 -10.5, 1.5 -4.5, 0 0" transform="rotate(0)"/>
+    <path d="M0 0 C-1.5 -4.5, -2.3 -10.5, -0.6 -15 Q0 -16.5, 0.6 -15 C2.3 -10.5, 1.5 -4.5, 0 0" transform="rotate(60)"/>
+    <path d="M0 0 C-1.5 -4.5, -2.3 -10.5, -0.6 -15 Q0 -16.5, 0.6 -15 C2.3 -10.5, 1.5 -4.5, 0 0" transform="rotate(120)"/>
+    <path d="M0 0 C-1.5 -4.5, -2.3 -10.5, -0.6 -15 Q0 -16.5, 0.6 -15 C2.3 -10.5, 1.5 -4.5, 0 0" transform="rotate(180)"/>
+    <path d="M0 0 C-1.5 -4.5, -2.3 -10.5, -0.6 -15 Q0 -16.5, 0.6 -15 C2.3 -10.5, 1.5 -4.5, 0 0" transform="rotate(240)"/>
+    <path d="M0 0 C-1.5 -4.5, -2.3 -10.5, -0.6 -15 Q0 -16.5, 0.6 -15 C2.3 -10.5, 1.5 -4.5, 0 0" transform="rotate(300)"/>
 
-  <!-- 5 ellipse petals - cleaner than paths, still suggests tab shape -->
-  <g transform="translate(24, 24)">
-    <!-- Petals: slightly elongated ellipses pointing outward -->
-    <ellipse cx="0" cy="-11" rx="5" ry="8" fill="white" transform="rotate(0)"/>
-    <ellipse cx="0" cy="-10.5" rx="4.8" ry="7.5" fill="white" opacity="0.95" transform="rotate(72)"/>
-    <ellipse cx="0" cy="-10" rx="4.8" ry="7" fill="white" opacity="0.9" transform="rotate(144)"/>
-    <ellipse cx="0" cy="-10" rx="4.8" ry="7" fill="white" opacity="0.9" transform="rotate(216)"/>
-    <ellipse cx="0" cy="-10.5" rx="4.8" ry="7.5" fill="white" opacity="0.95" transform="rotate(288)"/>
-
-    <!-- Golden center -->
-    <circle cx="0" cy="0" r="6" fill="url(#gold48)"/>
-    <circle cx="-1.5" cy="-1.5" r="2" fill="white" opacity="0.45"/>
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="3" fill="white" stroke="none"/>
   </g>
 </svg>
