@@ -182,24 +182,13 @@ body, html {
   text-align: center;
 }
 
-.stat-pill--coins {
-  color: var(--color-coins);
-  background: rgba(255, 214, 10, 0.12);
-}
-
-.stat-pill--healthy {
-  color: var(--color-healthy);
-  background: var(--accent-muted);
-}
-
-.stat-pill--wilting {
-  color: var(--color-wilting);
-  background: rgba(255, 149, 0, 0.12);
-}
-
+/* All stat pills use consistent brand styling */
+.stat-pill--coins,
+.stat-pill--healthy,
+.stat-pill--wilting,
 .stat-pill--streak {
-  color: var(--color-warning);
-  background: rgba(255, 149, 0, 0.12);
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
 }
 
 /* Hide streak if zero */
@@ -2732,14 +2721,14 @@ button:focus-visible,
   transform: scale(1.05);
 }
 
-/* Pulsing attention state for wilting when > 0 */
+/* Subtle attention state for wilting - uses brand green */
 .stat-pill--wilting[data-attention="true"] {
   animation: attention-pulse 2s ease-in-out infinite;
 }
 
 @keyframes attention-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255, 107, 107, 0); }
-  50% { box-shadow: 0 0 0 4px rgba(255, 107, 107, 0.3); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 184, 148, 0); }
+  50% { box-shadow: 0 0 0 3px rgba(0, 184, 148, 0.2); }
 }
 
 /* Collapsible level indicator */
