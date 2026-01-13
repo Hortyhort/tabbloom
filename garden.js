@@ -6047,30 +6047,36 @@ const CoachMarks = {
             </div>
         `;
 
-        // Position tooltip based on target
+        // Position tooltip based on target - simplified for side panel
+        // CSS handles horizontal centering, we just need to set vertical position
+        const viewportHeight = window.innerHeight;
+
         if (target && step.position !== 'center') {
             const rect = target.getBoundingClientRect();
-            const tooltipRect = this.tooltip.getBoundingClientRect();
+            let top;
 
             switch (step.position) {
                 case 'bottom':
-                    this.tooltip.style.top = `${rect.bottom + 16}px`;
-                    this.tooltip.style.left = `${Math.max(16, rect.left + rect.width / 2 - 140)}px`;
+                    top = rect.bottom + 16;
                     break;
                 case 'top':
-                    this.tooltip.style.top = `${rect.top - tooltipRect.height - 16}px`;
-                    this.tooltip.style.left = `${Math.max(16, rect.left + rect.width / 2 - 140)}px`;
+                    // Position above target, but ensure it stays in viewport
+                    top = Math.max(16, rect.top - 180);
                     break;
                 case 'left':
-                    this.tooltip.style.top = `${rect.top}px`;
-                    this.tooltip.style.left = `${Math.max(16, rect.left - 296)}px`;
+                case 'right':
+                    top = Math.max(16, rect.top);
                     break;
             }
+
+            // Ensure tooltip doesn't go below viewport
+            const maxTop = viewportHeight - 200;
+            this.tooltip.style.top = `${Math.min(top, maxTop)}px`;
+            this.tooltip.style.transform = 'none';
         } else {
             // Center position
             this.tooltip.style.top = '50%';
-            this.tooltip.style.left = '50%';
-            this.tooltip.style.transform = 'translate(-50%, -50%)';
+            this.tooltip.style.transform = 'translateY(-50%)';
         }
 
         // Add event listeners
