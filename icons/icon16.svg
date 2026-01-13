@@ -9,16 +9,16 @@
   <!-- Rounded square background -->
   <rect x="1" y="1" width="14" height="14" rx="3" ry="3" fill="url(#bg16)"/>
 
-  <!-- Ultra-simple 5-petal flower silhouette -->
+  <!-- Simple 5-petal flower using circles - pixel perfect at 16px -->
   <g transform="translate(8, 8)">
-    <!-- 5 simple tab-petals -->
-    <path d="M-1.8 -2.5 Q-1.8 -5.5 0 -6 Q1.8 -5.5 1.8 -2.5 L1 -1 Q0 -0.3 -1 -1 Z" fill="white" transform="rotate(0)"/>
-    <path d="M-1.6 -2.3 Q-1.6 -5 0 -5.5 Q1.6 -5 1.6 -2.3 L0.9 -0.9 Q0 -0.3 -0.9 -0.9 Z" fill="white" transform="rotate(72)"/>
-    <path d="M-1.6 -2.2 Q-1.6 -4.8 0 -5.3 Q1.6 -4.8 1.6 -2.2 L0.9 -0.8 Q0 -0.3 -0.9 -0.8 Z" fill="white" transform="rotate(144)"/>
-    <path d="M-1.6 -2.2 Q-1.6 -4.8 0 -5.3 Q1.6 -4.8 1.6 -2.2 L0.9 -0.8 Q0 -0.3 -0.9 -0.8 Z" fill="white" transform="rotate(216)"/>
-    <path d="M-1.6 -2.3 Q-1.6 -5 0 -5.5 Q1.6 -5 1.6 -2.3 L0.9 -0.9 Q0 -0.3 -0.9 -0.9 Z" fill="white" transform="rotate(288)"/>
+    <!-- 5 circular petals arranged as flower -->
+    <circle cx="0" cy="-4" r="2.5" fill="white"/>
+    <circle cx="3.8" cy="-1.2" r="2.3" fill="white"/>
+    <circle cx="2.4" cy="3.2" r="2.3" fill="white"/>
+    <circle cx="-2.4" cy="3.2" r="2.3" fill="white"/>
+    <circle cx="-3.8" cy="-1.2" r="2.3" fill="white"/>
 
-    <!-- Golden center dot -->
-    <circle cx="0" cy="0" r="2" fill="#FFB300"/>
+    <!-- Bold golden center -->
+    <circle cx="0" cy="0" r="2.5" fill="#FFB300"/>
   </g>
 </svg>
