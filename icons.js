@@ -217,6 +217,28 @@ const Icons = {
     <path d="M3 4h14l-5 6v6l-4 2V10L3 4z"/>
   </svg>`,
 
+  copy: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="10" height="11" rx="1.5"/>
+    <path d="M14 6V4.5A1.5 1.5 0 0012.5 3h-8A1.5 1.5 0 003 4.5v8A1.5 1.5 0 004.5 14H6"/>
+  </svg>`,
+
+  download: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 3v10M6 9l4 4 4-4"/>
+    <path d="M3 14v2a1 1 0 001 1h12a1 1 0 001-1v-2"/>
+  </svg>`,
+
+  more: `<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" stroke="none">
+    <circle cx="4" cy="10" r="1.5"/>
+    <circle cx="10" cy="10" r="1.5"/>
+    <circle cx="16" cy="10" r="1.5"/>
+  </svg>`,
+
+  moreVertical: `<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" stroke="none">
+    <circle cx="10" cy="4" r="1.5"/>
+    <circle cx="10" cy="10" r="1.5"/>
+    <circle cx="10" cy="16" r="1.5"/>
+  </svg>`,
+
   // ========== Helpers ==========
 
   /**

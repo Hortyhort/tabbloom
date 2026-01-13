@@ -1,4 +1,6 @@
 // garden.js - The TabBloom Rendering Engine
+// Version 0.4.0 - Sprint 6: Polish & Store Readiness
+
 const canvas = document.getElementById('garden-canvas');
 const ctx = canvas.getContext('2d');
 const tooltip = document.getElementById('tooltip');
@@ -12,6 +14,8 @@ let width, height;
 let hoveredPlant = null;
 let currentCoins = 120; // Starting coins
 let frameCount = 0; // For animations
+let isInitialized = false; // Track initialization state
+let initializationError = null; // Store any init errors
 
 // Global settings (loaded from options)
 let gardenSettings = {
@@ -41,6 +45,255 @@ const getFrameInterval = () => 1000 / gardenSettings.targetFps;
 let healthCheckInterval = null;
 let animationFrameId = null;
 
+// ============================================
+// Performance Utilities (Sprint 6)
+// ============================================
+
+// Debounce utility - delay execution until after wait ms
+function debounce(func, wait = 100) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Throttle utility - limit execution to once per limit ms
+function throttle(func, limit = 100) {
+    let inThrottle;
+    return function executedFunction(...args) {
+        if (!inThrottle) {
+            func(...args);
+            inThrottle = true;
+            setTimeout(() => inThrottle = false, limit);
+        }
+    };
+}
+
+// Request Idle Callback polyfill for low-priority tasks
+const requestIdleCallback = window.requestIdleCallback || function(cb) {
+    const start = Date.now();
+    return setTimeout(() => {
+        cb({
+            didTimeout: false,
+            timeRemaining: () => Math.max(0, 50 - (Date.now() - start))
+        });
+    }, 1);
+};
+
+const cancelIdleCallback = window.cancelIdleCallback || clearTimeout;
+
+// Cleanup manager for memory management
+const CleanupManager = {
+    callbacks: [],
+
+    register(callback) {
+        this.callbacks.push(callback);
+    },
+
+    runAll() {
+        this.callbacks.forEach(cb => {
+            try {
+                cb();
+            } catch (e) {
+                console.warn('Cleanup callback failed:', e);
+            }
+        });
+        this.callbacks = [];
+    },
+
+    // Clean up stale particles to prevent memory leaks
+    cleanupParticles() {
+        const maxParticles = 100;
+        if (particles.length > maxParticles) {
+            particles = particles.slice(-maxParticles);
+        }
+    },
+
+    // Clear favicon cache entries older than 30 minutes
+    cleanupFaviconCache() {
+        if (faviconCache.size > 100) {
+            const entries = Array.from(faviconCache.entries());
+            const toDelete = entries.slice(0, entries.length - 50);
+            toDelete.forEach(([key]) => faviconCache.delete(key));
+        }
+    }
+};
+
+// Schedule periodic cleanup during idle time
+let cleanupScheduled = false;
+function scheduleCleanup() {
+    if (cleanupScheduled) return;
+    cleanupScheduled = true;
+
+    requestIdleCallback(() => {
+        CleanupManager.cleanupParticles();
+        CleanupManager.cleanupFaviconCache();
+        cleanupScheduled = false;
+    }, { timeout: 5000 });
+}
+
+// ============================================
+// Error Boundary & Recovery (Sprint 6)
+// ============================================
+
+// Safe execution wrapper for async operations
+async function safeAsync(fn, fallback = null, context = 'operation') {
+    try {
+        return await fn();
+    } catch (error) {
+        console.error(`TabBloom ${context} failed:`, error);
+        if (typeof Toast !== 'undefined') {
+            Toast.error(`Unable to complete ${context}`);
+        }
+        return fallback;
+    }
+}
+
+// Safe DOM operation wrapper
+function safeDOM(fn, context = 'DOM operation') {
+    try {
+        return fn();
+    } catch (error) {
+        console.warn(`TabBloom ${context} failed:`, error);
+        return null;
+    }
+}
+
+// Global error handler for uncaught errors
+window.addEventListener('error', (event) => {
+    console.error('TabBloom uncaught error:', event.error);
+    // Don't crash the whole extension - try to recover
+    if (!isInitialized && initializationError === null) {
+        initializationError = event.error;
+        showErrorState('Unable to load garden. Please try refreshing.');
+    }
+});
+
+// Global promise rejection handler
+window.addEventListener('unhandledrejection', (event) => {
+    console.error('TabBloom unhandled rejection:', event.reason);
+    event.preventDefault(); // Prevent console error spam
+});
+
+// Show error state in the garden container
+function showErrorState(message) {
+    const container = document.getElementById('garden-container');
+    if (!container) return;
+
+    container.innerHTML = `
+        <div class="error-state" role="alert" style="
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            padding: 24px;
+            text-align: center;
+            color: var(--text-secondary, #666);
+        ">
+            <div style="font-size: 48px; margin-bottom: 16px;" aria-hidden="true">🥀</div>
+            <h3 style="margin: 0 0 8px; color: var(--text-primary, #333);">Something went wrong</h3>
+            <p style="margin: 0 0 16px; max-width: 240px;">${message}</p>
+            <button onclick="location.reload()" style="
+                background: var(--logo-green, #00B894);
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: 600;
+            ">Refresh Garden</button>
+        </div>
+    `;
+}
+
+// ============================================
+// Loading State Management (Sprint 6)
+// ============================================
+
+function showLoadingState() {
+    const container = document.getElementById('garden-container');
+    if (!container) return;
+
+    // Check if loading state already exists
+    if (container.querySelector('.loading-state')) return;
+
+    const loadingEl = document.createElement('div');
+    loadingEl.className = 'loading-state';
+    loadingEl.setAttribute('role', 'status');
+    loadingEl.setAttribute('aria-live', 'polite');
+    loadingEl.innerHTML = `
+        <div class="loading-spinner" aria-hidden="true"></div>
+        <p class="loading-text">Growing your garden...</p>
+    `;
+
+    // Add inline styles for loading state
+    loadingEl.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--bg-secondary, #FEFBF6);
+        z-index: 100;
+    `;
+
+    // Add spinner animation
+    const spinner = loadingEl.querySelector('.loading-spinner');
+    if (spinner) {
+        spinner.style.cssText = `
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-subtle, #E8E4DF);
+            border-top-color: var(--logo-green, #00B894);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 12px;
+        `;
+    }
+
+    const text = loadingEl.querySelector('.loading-text');
+    if (text) {
+        text.style.cssText = `
+            margin: 0;
+            color: var(--text-secondary, #666);
+            font-size: 14px;
+        `;
+    }
+
+    container.appendChild(loadingEl);
+
+    // Add spin animation if not already in document
+    if (!document.getElementById('tabbloom-loading-styles')) {
+        const style = document.createElement('style');
+        style.id = 'tabbloom-loading-styles';
+        style.textContent = `
+            @keyframes spin {
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function hideLoadingState() {
+    const loadingEl = document.querySelector('.loading-state');
+    if (loadingEl) {
+        loadingEl.style.opacity = '0';
+        loadingEl.style.transition = 'opacity 0.3s ease';
+        setTimeout(() => loadingEl.remove(), 300);
+    }
+}
+
 // Wilt speed multipliers (hours until fully wilted)
 const WILT_SPEEDS = {
     slow: 24,
@@ -48,6 +301,31 @@ const WILT_SPEEDS = {
     fast: 6,
     rapid: 2
 };
+
+// Favicon cache for flower center rendering
+const faviconCache = new Map();
+
+// Load and cache a favicon image
+function loadFavicon(url) {
+    if (!url) return null;
+    if (faviconCache.has(url)) {
+        return faviconCache.get(url);
+    }
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+        faviconCache.set(url, img);
+    };
+    img.onerror = () => {
+        faviconCache.set(url, null); // Mark as failed
+    };
+    img.src = url;
+
+    // Return null while loading (will draw on next frame after load)
+    faviconCache.set(url, null);
+    return null;
+}
 
 // ============================================
 // Toast Notification System
@@ -217,7 +495,7 @@ function showPlantDetail(plant) {
     }
 
     const tab = plant.tab;
-    const hostname = new URL(tab.url || 'about:blank').hostname;
+    const friendlyName = plant.getFriendlyName();
     const healthPercent = Math.round((1 - plant.age) * 100);
     const healthStatus = plant.age < 0.3 ? 'Healthy' : plant.age < 0.7 ? 'Wilting' : 'Dormant';
     const plantedTime = getTimeAgo(plant.lastActiveTime);
@@ -230,7 +508,7 @@ function showPlantDetail(plant) {
                 </div>
                 <div class="plant-detail-info">
                     <h3 id="plant-detail-title" class="plant-detail-title">${tab.title || 'Untitled'}</h3>
-                    <p class="plant-detail-url">${hostname}</p>
+                    <p class="plant-detail-url">${friendlyName}</p>
                 </div>
             </div>
             <div class="plant-detail-stats">
@@ -454,23 +732,28 @@ async function undoHarvest() {
 // Filter System
 // ============================================
 let currentFilter = 'all';
+let currentCategoryFilter = 'all';
 let searchQuery = '';
 
 function setupFilterSystem() {
+    // Support both new segmented control and legacy chips
+    const filterSegments = document.querySelectorAll('.filter-segment[data-filter]');
     const filterChips = document.querySelectorAll('.filter-chip[data-filter]');
+    const filterElements = filterSegments.length > 0 ? filterSegments : filterChips;
     const searchInput = document.getElementById('filterSearch');
 
-    filterChips.forEach(chip => {
-        chip.addEventListener('click', () => {
-            filterChips.forEach(c => {
+    filterElements.forEach(el => {
+        el.addEventListener('click', () => {
+            filterElements.forEach(c => {
                 c.classList.remove('active');
                 c.setAttribute('aria-pressed', 'false');
             });
-            chip.classList.add('active');
-            chip.setAttribute('aria-pressed', 'true');
+            el.classList.add('active');
+            el.setAttribute('aria-pressed', 'true');
 
-            currentFilter = chip.dataset.filter;
+            currentFilter = el.dataset.filter;
             applyFilters();
+            updateDynamicCTA();
             AudioSystem.playHoverSoft();
         });
     });
@@ -492,11 +775,21 @@ function getPlantStatus(plant) {
 }
 
 function applyFilters() {
+    let visibleCount = 0;
+    let matchingPlants = [];
+
     plants.forEach(plant => {
         if (!plant.element) return;
 
         const status = getPlantStatus(plant);
         const matchesFilter = currentFilter === 'all' || status === currentFilter;
+
+        // Category filter
+        let matchesCategory = true;
+        if (currentCategoryFilter !== 'all') {
+            const plantCategory = plant.flowerType?.category || 'other';
+            matchesCategory = plantCategory === currentCategoryFilter;
+        }
 
         let matchesSearch = true;
         if (searchQuery) {
@@ -505,10 +798,168 @@ function applyFilters() {
             matchesSearch = title.includes(searchQuery) || url.includes(searchQuery);
         }
 
-        const isVisible = matchesFilter && matchesSearch;
+        const isVisible = matchesFilter && matchesCategory && matchesSearch;
         plant.element.style.display = isVisible ? '' : 'none';
         plant.filtered = !isVisible;
+
+        if (isVisible) {
+            visibleCount++;
+            matchingPlants.push(plant);
+        }
+
+        // Highlight matching plants during search
+        if (searchQuery && matchesSearch) {
+            plant.element.classList.add('search-match');
+        } else {
+            plant.element.classList.remove('search-match');
+        }
     });
+
+    // Update search feedback
+    updateSearchFeedback(visibleCount, matchingPlants);
+
+    // Show/hide empty state
+    updateEmptyState(visibleCount);
+}
+
+// Set category filter (called from UI)
+function setCategoryFilter(category) {
+    currentCategoryFilter = category;
+    applyFilters();
+    updateDynamicCTA();
+}
+
+// Update category counts in dropdown
+function updateCategoryCounts() {
+    const counts = {
+        all: plants.length,
+        social: 0,
+        dev: 0,
+        ai: 0,
+        google: 0,
+        media: 0,
+        shopping: 0,
+        work: 0,
+        other: 0
+    };
+
+    plants.forEach(plant => {
+        const category = plant.flowerType?.category || 'other';
+        if (counts[category] !== undefined) {
+            counts[category]++;
+        }
+    });
+
+    // Update count elements
+    const countEls = {
+        all: document.getElementById('catCountAll'),
+        social: document.getElementById('catCountSocial'),
+        dev: document.getElementById('catCountDev'),
+        ai: document.getElementById('catCountAi'),
+        google: document.getElementById('catCountGoogle'),
+        media: document.getElementById('catCountMedia'),
+        shopping: document.getElementById('catCountShopping'),
+        work: document.getElementById('catCountWork'),
+        other: document.getElementById('catCountOther')
+    };
+
+    Object.entries(countEls).forEach(([key, el]) => {
+        if (el) el.textContent = counts[key];
+    });
+
+    // Hide categories with 0 plants (except 'all' and 'other')
+    document.querySelectorAll('.category-item').forEach(item => {
+        const cat = item.dataset.category;
+        if (cat && cat !== 'all' && cat !== 'other') {
+            item.style.display = counts[cat] === 0 ? 'none' : '';
+        }
+    });
+}
+
+// Search feedback overlay
+function updateSearchFeedback(visibleCount, matchingPlants) {
+    let feedback = document.getElementById('searchFeedback');
+
+    if (!searchQuery) {
+        if (feedback) feedback.classList.add('hidden');
+        return;
+    }
+
+    // Create feedback element if needed
+    if (!feedback) {
+        feedback = document.createElement('div');
+        feedback.id = 'searchFeedback';
+        feedback.className = 'search-feedback';
+        feedback.setAttribute('role', 'status');
+        feedback.setAttribute('aria-live', 'polite');
+        document.querySelector('.filter-bar')?.appendChild(feedback);
+    }
+
+    if (visibleCount === 0) {
+        feedback.innerHTML = `<span class="search-feedback-icon">${Icons.get('search', 14)}</span> No results for "${escapeHtml(searchQuery)}"`;
+        feedback.classList.remove('hidden');
+        feedback.classList.add('no-results');
+    } else {
+        feedback.innerHTML = `<span class="search-feedback-count">${visibleCount}</span> ${visibleCount === 1 ? 'match' : 'matches'}`;
+        feedback.classList.remove('hidden', 'no-results');
+    }
+}
+
+// Empty state for garden
+function updateEmptyState(visibleCount) {
+    let emptyState = document.getElementById('gardenEmptyState');
+    const gardenContainer = document.getElementById('garden-container');
+
+    if (visibleCount > 0 || plants.length === 0) {
+        if (emptyState) emptyState.classList.add('hidden');
+        return;
+    }
+
+    // Create empty state if it doesn't exist
+    if (!emptyState && gardenContainer) {
+        emptyState = document.createElement('div');
+        emptyState.id = 'gardenEmptyState';
+        emptyState.className = 'garden-empty-state';
+        emptyState.setAttribute('role', 'status');
+        gardenContainer.appendChild(emptyState);
+    }
+
+    if (!emptyState) return;
+
+    // Customize message based on filter state
+    let icon, title, subtitle;
+
+    if (searchQuery) {
+        icon = 'search';
+        title = 'No matching tabs';
+        subtitle = `Try a different search term`;
+    } else if (currentFilter === 'healthy') {
+        icon = 'leaf';
+        title = 'No healthy tabs';
+        subtitle = 'Visit some tabs to help them bloom';
+    } else if (currentFilter === 'wilting') {
+        icon = 'leafDroop';
+        title = 'No wilting tabs';
+        subtitle = 'Your garden is thriving!';
+    } else {
+        icon = 'flower';
+        title = 'Garden is empty';
+        subtitle = 'Open some tabs to start growing';
+    }
+
+    emptyState.innerHTML = `
+        <div class="empty-state-icon">${Icons.get(icon, 32)}</div>
+        <h3 class="empty-state-title">${title}</h3>
+        <p class="empty-state-subtitle">${subtitle}</p>
+    `;
+    emptyState.classList.remove('hidden');
+}
+
+// Helper to escape HTML
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 function updateFilterCounts() {
@@ -519,6 +970,7 @@ function updateFilterCounts() {
         dormant: plants.filter(p => p.age >= 0.7).length
     };
 
+    // Update filter counts (supports both segment and chip variants)
     const allEl = document.getElementById('filterCountAll');
     const healthyEl = document.getElementById('filterCountHealthy');
     const wiltingEl = document.getElementById('filterCountWilting');
@@ -528,6 +980,44 @@ function updateFilterCounts() {
     if (healthyEl) healthyEl.textContent = counts.healthy;
     if (wiltingEl) wiltingEl.textContent = counts.wilting;
     if (dormantEl) dormantEl.textContent = counts.dormant;
+
+    // Update dynamic CTA
+    updateDynamicCTA();
+}
+
+// ============================================
+// Dynamic CTA Button
+// ============================================
+function updateDynamicCTA() {
+    const harvestBtn = document.getElementById('harvestAll');
+    const btnText = harvestBtn?.querySelector('.harvest-btn-text');
+    const rewardEl = document.getElementById('harvestReward');
+
+    if (!harvestBtn) return;
+
+    const wiltingCount = plants.filter(p => p.age >= 0.3 && p.age < 0.7).length;
+    const dormantCount = plants.filter(p => p.age >= 0.7).length;
+    const harvestableCount = wiltingCount + dormantCount;
+    const potentialCoins = harvestableCount * gardenSettings.harvestCoins;
+
+    // Remove existing state classes
+    harvestBtn.classList.remove('state-healthy', 'state-wilting');
+
+    if (harvestableCount === 0) {
+        // All healthy state
+        harvestBtn.classList.add('state-healthy');
+        if (btnText) btnText.textContent = 'Garden Thriving';
+        if (rewardEl) rewardEl.textContent = '';
+        harvestBtn.disabled = true;
+        harvestBtn.title = 'All tabs are healthy';
+    } else {
+        // Has harvestable tabs
+        harvestBtn.classList.add('state-wilting');
+        if (btnText) btnText.textContent = `Harvest ${harvestableCount} Tab${harvestableCount !== 1 ? 's' : ''}`;
+        if (rewardEl) rewardEl.textContent = `+${potentialCoins}`;
+        harvestBtn.disabled = false;
+        harvestBtn.title = `Close ${harvestableCount} wilting tabs and earn ${potentialCoins} coins`;
+    }
 }
 
 // ============================================
@@ -652,9 +1142,11 @@ function togglePlantSelection(plant) {
     if (selectedPlants.has(plant)) {
         selectedPlants.delete(plant);
         plant.element.classList.remove('selected');
+        AudioSystem.playHoverSoft(); // Deselect sound
     } else {
         selectedPlants.add(plant);
         plant.element.classList.add('selected');
+        AudioSystem.playGrowthRustle(); // Select sound
     }
 
     updateBatchActionBar();
@@ -669,12 +1161,24 @@ function clearSelection() {
     selectedPlants.clear();
 }
 
+let lastBatchCount = 0;
+
 function updateBatchActionBar() {
     const batchActionBar = document.getElementById('batchActionBar');
     const batchCount = document.getElementById('batchCount');
 
     if (batchCount) {
-        batchCount.textContent = selectedPlants.size;
+        const newCount = selectedPlants.size;
+        batchCount.textContent = newCount;
+
+        // Animate count changes
+        if (newCount !== lastBatchCount && newCount > 0) {
+            batchCount.classList.remove('bump');
+            // Trigger reflow for animation restart
+            void batchCount.offsetWidth;
+            batchCount.classList.add('bump');
+            lastBatchCount = newCount;
+        }
     }
 
     if (batchActionBar) {
@@ -2267,16 +2771,253 @@ async function captureGardenScreenshot() {
     }
 }
 
-function showShareFeedback(message) {
-    const btn = document.getElementById('shareBtn');
-    const originalText = btn.textContent;
-    btn.textContent = message;
-    btn.style.fontSize = '10px';
+function showShareFeedback(message, isError = false) {
+    // Show toast notification
+    const toast = document.createElement('div');
+    toast.className = `toast share-toast ${isError ? 'toast-error' : ''}`;
+    toast.innerHTML = `
+        <span class="toast-icon">${isError ? Icons.get('close', 16) : Icons.get('check', 16)}</span>
+        <span>${message}</span>
+    `;
+
+    Toast.init();
+    Toast.container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('visible'));
 
     setTimeout(() => {
-        btn.textContent = originalText;
-        btn.style.fontSize = '';
-    }, 2000);
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+    }, 2500);
+}
+
+// Enhanced share with preview modal
+function showSharePreview() {
+    let modal = document.getElementById('sharePreviewModal');
+
+    if (modal && !modal.classList.contains('hidden')) {
+        modal.classList.add('hidden');
+        return;
+    }
+
+    const level = getGardenLevel();
+    const healthyCount = plants.filter(p => p.age < 0.3).length;
+    const wiltingCount = plants.filter(p => p.age >= 0.3 && p.age < 0.7).length;
+
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'sharePreviewModal';
+        modal.className = 'share-preview-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', 'Share Garden');
+        document.body.appendChild(modal);
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.add('hidden');
+        });
+    }
+
+    modal.innerHTML = `
+        <div class="share-preview-content">
+            <div class="share-preview-header">
+                <h3>Share Your Garden</h3>
+                <button class="share-preview-close" aria-label="Close">${Icons.get('close', 16)}</button>
+            </div>
+
+            <div class="share-preview-canvas" id="sharePreviewCanvas">
+                <div class="share-preview-placeholder">
+                    ${Icons.get('camera', 32)}
+                    <span>Generating preview...</span>
+                </div>
+            </div>
+
+            <div class="share-preview-stats">
+                <div class="share-stat">
+                    <span class="share-stat-icon" style="color: ${level.color}">${Icons.get(level.icon, 16)}</span>
+                    <span>Level ${level.level}</span>
+                </div>
+                <div class="share-stat">
+                    <span class="share-stat-icon" style="color: var(--logo-green)">${Icons.get('leaf', 16)}</span>
+                    <span>${healthyCount} healthy</span>
+                </div>
+                <div class="share-stat">
+                    <span class="share-stat-icon" style="color: var(--color-coins)">${Icons.get('coin', 16)}</span>
+                    <span>${currentCoins} coins</span>
+                </div>
+            </div>
+
+            <div class="share-options">
+                <label class="share-option">
+                    <input type="checkbox" id="shareIncludeName" ${shareSettings.includeGardenName ? 'checked' : ''}>
+                    <span>Include garden name</span>
+                </label>
+                <label class="share-option">
+                    <input type="checkbox" id="shareBlurTitles" ${shareSettings.blurTabTitles ? 'checked' : ''}>
+                    <span>Blur tab titles (privacy)</span>
+                </label>
+            </div>
+
+            <div class="share-actions">
+                <button class="btn-primary share-action-btn" id="shareCopy">
+                    ${Icons.get('copy', 16)}
+                    <span>Copy to Clipboard</span>
+                </button>
+                <button class="btn-secondary share-action-btn" id="shareDownload">
+                    ${Icons.get('download', 16)}
+                    <span>Download</span>
+                </button>
+            </div>
+        </div>
+    `;
+
+    // Attach handlers
+    modal.querySelector('.share-preview-close').addEventListener('click', () => modal.classList.add('hidden'));
+
+    modal.querySelector('#shareIncludeName').addEventListener('change', (e) => {
+        shareSettings.includeGardenName = e.target.checked;
+        chrome.storage.local.set({ shareSettings });
+        generateSharePreview();
+    });
+
+    modal.querySelector('#shareBlurTitles').addEventListener('change', (e) => {
+        shareSettings.blurTabTitles = e.target.checked;
+        chrome.storage.local.set({ shareSettings });
+        generateSharePreview();
+    });
+
+    modal.querySelector('#shareCopy').addEventListener('click', async () => {
+        await shareGardenImage('clipboard');
+    });
+
+    modal.querySelector('#shareDownload').addEventListener('click', async () => {
+        await shareGardenImage('download');
+    });
+
+    modal.classList.remove('hidden');
+
+    // Generate preview
+    generateSharePreview();
+}
+
+async function generateSharePreview() {
+    const previewContainer = document.getElementById('sharePreviewCanvas');
+    if (!previewContainer) return;
+
+    try {
+        const canvas = await createShareCanvas();
+        previewContainer.innerHTML = '';
+
+        const img = document.createElement('img');
+        img.src = canvas.toDataURL('image/png');
+        img.className = 'share-preview-image';
+        img.alt = 'Garden preview';
+        previewContainer.appendChild(img);
+    } catch (err) {
+        previewContainer.innerHTML = `
+            <div class="share-preview-error">
+                ${Icons.get('close', 24)}
+                <span>Failed to generate preview</span>
+            </div>
+        `;
+    }
+}
+
+async function createShareCanvas() {
+    const season = getCurrentSeason();
+    const seasonEmoji = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' }[season];
+    const gardenName = document.getElementById('gardenName')?.textContent || 'My Digital Sanctuary';
+    const bloomingCount = plants.filter(p => p.age < 0.3).length;
+    const level = getGardenLevel();
+
+    const gardenContainer = document.getElementById('garden-container');
+    const capturedCanvas = await html2canvas(gardenContainer, {
+        backgroundColor: null,
+        scale: 2,
+        logging: false
+    });
+
+    const finalCanvas = document.createElement('canvas');
+    const finalCtx = finalCanvas.getContext('2d');
+
+    finalCanvas.width = capturedCanvas.width;
+    finalCanvas.height = capturedCanvas.height + 120;
+
+    // Draw captured garden
+    finalCtx.drawImage(capturedCanvas, 0, 0);
+
+    // Privacy blur
+    if (shareSettings.blurTabTitles) {
+        finalCtx.filter = 'blur(8px)';
+        finalCtx.drawImage(capturedCanvas, 0, capturedCanvas.height * 0.7, capturedCanvas.width, capturedCanvas.height * 0.3,
+                          0, capturedCanvas.height * 0.7, capturedCanvas.width, capturedCanvas.height * 0.3);
+        finalCtx.filter = 'none';
+    }
+
+    // Footer gradient
+    const gradient = finalCtx.createLinearGradient(0, capturedCanvas.height, 0, finalCanvas.height);
+    gradient.addColorStop(0, 'rgba(255, 249, 245, 0.98)');
+    gradient.addColorStop(1, 'rgba(255, 236, 210, 0.98)');
+    finalCtx.fillStyle = gradient;
+    finalCtx.fillRect(0, capturedCanvas.height, finalCanvas.width, 120);
+
+    // Title
+    finalCtx.font = 'bold 28px -apple-system, BlinkMacSystemFont, sans-serif';
+    finalCtx.fillStyle = '#5D7A4A';
+    finalCtx.textAlign = 'center';
+    const titleText = shareSettings.includeGardenName
+        ? `${gardenName} ${seasonEmoji}`
+        : `My TabBloom Garden ${seasonEmoji}`;
+    finalCtx.fillText(titleText, finalCanvas.width / 2, capturedCanvas.height + 40);
+
+    // Stats line with level
+    finalCtx.font = '16px -apple-system, BlinkMacSystemFont, sans-serif';
+    finalCtx.fillStyle = '#7A6B5A';
+    finalCtx.fillText(
+        `Level ${level.level} ${level.name}  •  ${bloomingCount} blooming  •  ${currentCoins} coins`,
+        finalCanvas.width / 2,
+        capturedCanvas.height + 68
+    );
+
+    // Plant count
+    finalCtx.font = '14px -apple-system, BlinkMacSystemFont, sans-serif';
+    finalCtx.fillStyle = '#9A8A7A';
+    finalCtx.fillText(`${plants.length} tabs in garden`, finalCanvas.width / 2, capturedCanvas.height + 90);
+
+    // Watermark
+    finalCtx.font = '12px -apple-system, BlinkMacSystemFont, sans-serif';
+    finalCtx.fillStyle = '#B8A898';
+    finalCtx.fillText('TabBloom', finalCanvas.width / 2, capturedCanvas.height + 112);
+
+    return finalCanvas;
+}
+
+async function shareGardenImage(mode) {
+    const modal = document.getElementById('sharePreviewModal');
+
+    try {
+        const canvas = await createShareCanvas();
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+
+        if (mode === 'clipboard' && navigator.clipboard && navigator.clipboard.write) {
+            await navigator.clipboard.write([
+                new ClipboardItem({ 'image/png': blob })
+            ]);
+            showShareFeedback('Copied to clipboard!');
+        } else {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tabbloom-garden-${Date.now()}.png`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showShareFeedback('Downloaded!');
+        }
+
+        modal?.classList.add('hidden');
+        AudioSystem.playHarvestChime();
+    } catch (err) {
+        console.error('Share failed:', err);
+        showShareFeedback('Share failed', true);
+    }
 }
 
 // ============================================
@@ -2647,12 +3388,184 @@ canvas.addEventListener('mouseleave', () => {
 // ============================================
 let focusedPlantIndex = -1;
 
+// ============================================
+// Global Keyboard Shortcuts
+// ============================================
+const KEYBOARD_SHORTCUTS = {
+    'h': { action: 'harvestAll', description: 'Harvest all wilting tabs', modifier: false },
+    's': { action: 'toggleSearch', description: 'Focus search', modifier: false },
+    'r': { action: 'refresh', description: 'Refresh garden', modifier: false },
+    'm': { action: 'toggleSelectMode', description: 'Toggle select mode', modifier: false },
+    '1': { action: 'filterAll', description: 'Show all tabs', modifier: false },
+    '2': { action: 'filterHealthy', description: 'Show healthy tabs', modifier: false },
+    '3': { action: 'filterWilting', description: 'Show wilting tabs', modifier: false },
+    '?': { action: 'showShortcuts', description: 'Show keyboard shortcuts', modifier: false },
+    'Escape': { action: 'escape', description: 'Close dialogs/exit modes', modifier: false },
+};
+
+function executeShortcut(action) {
+    switch (action) {
+        case 'harvestAll':
+            const harvestBtn = document.getElementById('harvestAll');
+            if (harvestBtn && !harvestBtn.disabled) {
+                harvestBtn.click();
+            }
+            break;
+        case 'toggleSearch':
+            const searchToggle = document.getElementById('searchToggle');
+            const searchContainer = document.querySelector('.filter-search-container');
+            const searchInput = document.getElementById('filterSearch');
+            if (searchContainer?.classList.contains('expanded')) {
+                searchInput?.focus();
+            } else {
+                searchToggle?.click();
+            }
+            break;
+        case 'refresh':
+            refreshGarden();
+            break;
+        case 'toggleSelectMode':
+            const selectModeToggle = document.getElementById('selectModeToggle');
+            selectModeToggle?.click();
+            break;
+        case 'filterAll':
+            setFilter('all');
+            break;
+        case 'filterHealthy':
+            setFilter('healthy');
+            break;
+        case 'filterWilting':
+            setFilter('wilting');
+            break;
+        case 'showShortcuts':
+            showKeyboardShortcutsModal();
+            break;
+        case 'escape':
+            handleEscapeKey();
+            break;
+    }
+}
+
+function setFilter(filter) {
+    const filterBtn = document.querySelector(`.filter-segment[data-filter="${filter}"]`);
+    if (filterBtn) {
+        filterBtn.click();
+    }
+}
+
+function handleEscapeKey() {
+    // Priority order for escape handling
+    const plantDetail = document.getElementById('plantDetailOverlay');
+    const shortcutsModal = document.getElementById('shortcutsModal');
+    const searchContainer = document.querySelector('.filter-search-container');
+
+    if (plantDetail?.classList.contains('visible')) {
+        hidePlantDetail();
+    } else if (shortcutsModal && !shortcutsModal.classList.contains('hidden')) {
+        shortcutsModal.classList.add('hidden');
+    } else if (selectionMode) {
+        exitSelectionMode();
+    } else if (searchContainer?.classList.contains('expanded')) {
+        const searchInput = document.getElementById('filterSearch');
+        if (searchInput) {
+            searchInput.value = '';
+            searchInput.dispatchEvent(new Event('input'));
+        }
+        searchContainer.classList.remove('expanded');
+        document.getElementById('searchToggle')?.setAttribute('aria-expanded', 'false');
+    } else {
+        focusedPlantIndex = -1;
+        clearPlantFocus();
+    }
+}
+
+function showKeyboardShortcutsModal() {
+    let modal = document.getElementById('shortcutsModal');
+
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'shortcutsModal';
+        modal.className = 'shortcuts-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', 'Keyboard shortcuts');
+
+        const shortcuts = Object.entries(KEYBOARD_SHORTCUTS)
+            .filter(([key]) => key !== 'Escape')
+            .map(([key, { description }]) => `
+                <div class="shortcut-row">
+                    <kbd class="shortcut-key">${key === '?' ? 'Shift + /' : key}</kbd>
+                    <span class="shortcut-desc">${description}</span>
+                </div>
+            `).join('');
+
+        modal.innerHTML = `
+            <div class="shortcuts-modal-content">
+                <div class="shortcuts-modal-header">
+                    <h3>Keyboard Shortcuts</h3>
+                    <button class="shortcuts-close" aria-label="Close">${Icons.get('close', 16)}</button>
+                </div>
+                <div class="shortcuts-list">
+                    ${shortcuts}
+                    <div class="shortcut-row">
+                        <kbd class="shortcut-key">Arrow keys</kbd>
+                        <span class="shortcut-desc">Navigate plants</span>
+                    </div>
+                    <div class="shortcut-row">
+                        <kbd class="shortcut-key">Enter</kbd>
+                        <span class="shortcut-desc">Harvest focused plant</span>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Close handlers
+        modal.querySelector('.shortcuts-close').addEventListener('click', () => {
+            modal.classList.add('hidden');
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.add('hidden');
+            }
+        });
+    }
+
+    modal.classList.remove('hidden');
+    AudioSystem.playHoverSoft();
+}
+
 document.addEventListener('keydown', (e) => {
-    // Only handle if garden is focused
-    const gardenContainer = document.getElementById('garden-container');
-    if (!gardenContainer || !gardenContainer.contains(document.activeElement) && document.activeElement !== document.body) {
+    // Don't handle shortcuts when typing in input fields
+    const activeEl = document.activeElement;
+    const isInputField = activeEl?.tagName === 'INPUT' || activeEl?.tagName === 'TEXTAREA' || activeEl?.isContentEditable;
+
+    // Always allow Escape
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        executeShortcut('escape');
         return;
     }
+
+    // Skip shortcuts when typing (except Escape)
+    if (isInputField) {
+        return;
+    }
+
+    // Check for global shortcuts
+    const key = e.key.toLowerCase();
+    const shortcut = KEYBOARD_SHORTCUTS[e.key] || KEYBOARD_SHORTCUTS[key];
+
+    if (shortcut && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        executeShortcut(shortcut.action);
+        return;
+    }
+
+    // Plant navigation shortcuts (arrows)
+    const gardenContainer = document.getElementById('garden-container');
+    if (!gardenContainer) return;
 
     if (plants.length === 0) return;
 
@@ -2673,12 +3586,12 @@ document.addEventListener('keydown', (e) => {
         case ' ':
             e.preventDefault();
             if (focusedPlantIndex >= 0 && focusedPlantIndex < plants.length) {
-                harvestPlantByIndex(focusedPlantIndex);
+                if (selectionMode) {
+                    togglePlantSelection(plants[focusedPlantIndex]);
+                } else {
+                    harvestPlantByIndex(focusedPlantIndex);
+                }
             }
-            break;
-        case 'Escape':
-            focusedPlantIndex = -1;
-            clearPlantFocus();
             break;
     }
 });
@@ -2743,7 +3656,7 @@ function showTooltip(plant) {
 
     tooltip.innerHTML = `
         <strong style="color: var(--text-primary);">${plant.tab.title || 'Untitled'}</strong><br>
-        <span style="color: var(--text-secondary); font-size: 11px;">${new URL(plant.tab.url || 'about:blank').hostname}</span>
+        <span style="color: var(--text-secondary); font-size: 11px;">${plant.getFriendlyName()}</span>
     `;
     tooltip.style.left = `${Math.min(plant.x + 20, gardenContainer.offsetWidth - 200)}px`;
     tooltip.style.top = `${plant.y - 60}px`;
@@ -2851,78 +3764,248 @@ function calculateHealthFromActivity(lastActiveTime) {
     }
 }
 
-// Flower variety - 5 types with different colors and shapes
+// Flower variety - 8 types with different colors and shapes for domain categories
 const FLOWER_TYPES = {
-    lily: {
-        name: 'lily',
-        petalCount: 6,
-        petalShape: 'curved',
-        colors: { bloom: '#FFB7C5', accent: '#FF8FA3', center: '#FFD700' }
-    },
+    // Social Media - Coral/Pink roses (warm, social, expressive)
     rose: {
         name: 'rose',
+        category: 'social',
         petalCount: 8,
         petalShape: 'round',
-        colors: { bloom: '#FF6B6B', accent: '#FF4757', center: '#FFE66D' }
+        colors: { bloom: '#FF6B8A', accent: '#FF4D6D', center: '#FFE066' }
     },
-    sunflower: {
-        name: 'sunflower',
-        petalCount: 12,
-        petalShape: 'long',
-        colors: { bloom: '#FFD93D', accent: '#FF9F1C', center: '#6B4423' }
+    // Dev Tools - Blue/Purple iris (technical, precise)
+    iris: {
+        name: 'iris',
+        category: 'dev',
+        petalCount: 6,
+        petalShape: 'curved',
+        colors: { bloom: '#7C83FD', accent: '#5C64FC', center: '#B8BBFF' }
     },
-    daisy: {
-        name: 'daisy',
-        petalCount: 10,
-        petalShape: 'thin',
-        colors: { bloom: '#FFFFFF', accent: '#F0F0F0', center: '#FFD700' }
+    // AI/Chat - Iridescent orchid (futuristic, intelligent)
+    orchid: {
+        name: 'orchid',
+        category: 'ai',
+        petalCount: 5,
+        petalShape: 'curved',
+        colors: { bloom: '#A78BFA', accent: '#8B5CF6', center: '#C4B5FD' },
+        gradient: true // Special iridescent effect
     },
+    // Google Services - Multi-color tulip (brand colors)
     tulip: {
         name: 'tulip',
+        category: 'google',
         petalCount: 4,
         petalShape: 'cup',
-        colors: { bloom: '#9B59B6', accent: '#8E44AD', center: '#F1C40F' }
+        colors: { bloom: '#4285F4', accent: '#34A853', center: '#FBBC04' }
     },
-    nightbloom: {
-        name: 'nightbloom',
-        petalCount: 7,
+    // Media/Entertainment - Orange/Red dahlia (vibrant, energetic)
+    dahlia: {
+        name: 'dahlia',
+        category: 'media',
+        petalCount: 10,
+        petalShape: 'thin',
+        colors: { bloom: '#FF6B35', accent: '#F7931A', center: '#FFD93D' }
+    },
+    // Shopping - Gold/Amber marigold (commerce, value)
+    marigold: {
+        name: 'marigold',
+        category: 'shopping',
+        petalCount: 12,
+        petalShape: 'round',
+        colors: { bloom: '#FFB347', accent: '#FF8C00', center: '#8B4513' }
+    },
+    // Work/Productivity - Teal lily (professional, calm)
+    lily: {
+        name: 'lily',
+        category: 'work',
+        petalCount: 6,
         petalShape: 'curved',
-        colors: { bloom: '#2C1654', accent: '#1A0A30', center: '#9B59B6' },
-        glows: true // Special property for dark mode glow effect
+        colors: { bloom: '#00B894', accent: '#00A085', center: '#FFD700' }
+    },
+    // Default/Other - Clean white daisy (neutral, versatile)
+    daisy: {
+        name: 'daisy',
+        category: 'other',
+        petalCount: 10,
+        petalShape: 'thin',
+        colors: { bloom: '#F8F9FA', accent: '#E9ECEF', center: '#FFD700' }
     }
 };
 
-// Domain categories for flower assignment
+// Domain to friendly name mapping for smart labels
+const DOMAIN_FRIENDLY_NAMES = {
+    // AI/Chat
+    'chatgpt.com': 'ChatGPT',
+    'chat.openai.com': 'ChatGPT',
+    'claude.ai': 'Claude',
+    'gemini.google.com': 'Gemini',
+    'grok.com': 'Grok',
+    'x.com/i/grok': 'Grok',
+    'perplexity.ai': 'Perplexity',
+    'poe.com': 'Poe',
+    'character.ai': 'Character',
+    'you.com': 'You.com',
+    'copilot.microsoft.com': 'Copilot',
+
+    // Social
+    'twitter.com': 'Twitter',
+    'x.com': 'Twitter',
+    'facebook.com': 'Facebook',
+    'instagram.com': 'Instagram',
+    'linkedin.com': 'LinkedIn',
+    'reddit.com': 'Reddit',
+    'discord.com': 'Discord',
+    'tiktok.com': 'TikTok',
+    'threads.net': 'Threads',
+
+    // Dev Tools
+    'github.com': 'GitHub',
+    'gitlab.com': 'GitLab',
+    'stackoverflow.com': 'Stack Overflow',
+    'vercel.com': 'Vercel',
+    'netlify.com': 'Netlify',
+    'railway.app': 'Railway',
+    'replit.com': 'Replit',
+    'codepen.io': 'CodePen',
+    'codesandbox.io': 'CodeSandbox',
+    'npmjs.com': 'npm',
+    'localhost': 'Localhost',
+
+    // Google
+    'google.com': 'Google',
+    'mail.google.com': 'Gmail',
+    'drive.google.com': 'Drive',
+    'docs.google.com': 'Docs',
+    'sheets.google.com': 'Sheets',
+    'calendar.google.com': 'Calendar',
+    'meet.google.com': 'Meet',
+    'photos.google.com': 'Photos',
+
+    // Work
+    'slack.com': 'Slack',
+    'notion.so': 'Notion',
+    'figma.com': 'Figma',
+    'linear.app': 'Linear',
+    'asana.com': 'Asana',
+    'trello.com': 'Trello',
+    'airtable.com': 'Airtable',
+    'miro.com': 'Miro',
+    'zoom.us': 'Zoom',
+
+    // Media
+    'youtube.com': 'YouTube',
+    'netflix.com': 'Netflix',
+    'spotify.com': 'Spotify',
+    'twitch.tv': 'Twitch',
+    'hulu.com': 'Hulu',
+    'disneyplus.com': 'Disney+',
+    'primevideo.com': 'Prime Video',
+    'soundcloud.com': 'SoundCloud',
+
+    // Shopping
+    'amazon.com': 'Amazon',
+    'ebay.com': 'eBay',
+    'etsy.com': 'Etsy',
+    'shopify.com': 'Shopify',
+    'walmart.com': 'Walmart',
+    'target.com': 'Target',
+
+    // News
+    'news.ycombinator.com': 'Hacker News',
+    'medium.com': 'Medium',
+    'substack.com': 'Substack',
+    'nytimes.com': 'NY Times',
+    'bbc.com': 'BBC',
+    'cnn.com': 'CNN',
+    'theverge.com': 'The Verge',
+    'techcrunch.com': 'TechCrunch',
+    'wired.com': 'Wired'
+};
+
+// Domain categories for flower assignment (expanded)
 function getFlowerTypeForUrl(url) {
     try {
-        const hostname = new URL(url).hostname.toLowerCase();
+        const hostname = new URL(url).hostname.toLowerCase().replace(/^www\./, '');
 
-        // Social media → Rose (passionate, expressive)
-        if (/facebook|twitter|instagram|tiktok|reddit|discord|linkedin/i.test(hostname)) {
-            return FLOWER_TYPES.rose;
+        // AI/Chat Tools → Orchid (iridescent, futuristic)
+        if (/chatgpt|openai|claude\.ai|anthropic|gemini\.google|bard\.google|grok|perplexity|character\.ai|poe\.com|copilot|you\.com/i.test(hostname)) {
+            return FLOWER_TYPES.orchid;
         }
-        // News/Media → Sunflower (bright, informative)
-        if (/news|bbc|cnn|nytimes|guardian|medium|substack/i.test(hostname)) {
-            return FLOWER_TYPES.sunflower;
+
+        // Dev Tools → Iris (blue/purple, technical)
+        if (/github|gitlab|stackoverflow|vercel|netlify|railway|replit|codepen|codesandbox|npmjs|localhost|127\.0\.0|\.local$/i.test(hostname)) {
+            return FLOWER_TYPES.iris;
         }
-        // Work/Productivity → Lily (elegant, professional)
-        if (/github|gitlab|jira|slack|notion|figma|google|docs|sheets/i.test(hostname)) {
-            return FLOWER_TYPES.lily;
-        }
-        // Entertainment → Tulip (colorful, fun)
-        if (/youtube|netflix|spotify|twitch|hulu|disney/i.test(hostname)) {
+
+        // Google Services → Tulip (brand colors)
+        if (/google\.com|gmail|gdocs|gsheets|gcalendar|youtube\.com/i.test(hostname) && !/gemini/i.test(hostname)) {
             return FLOWER_TYPES.tulip;
         }
-        // Knowledge/Research → Night Bloom (mysterious, glowing)
-        if (/wikipedia|stackoverflow|archive|wayback|library|research|academic|scholar|arxiv|jstor|edu\./i.test(hostname)) {
-            return FLOWER_TYPES.nightbloom;
+
+        // Social Media → Rose (coral/pink, social)
+        if (/facebook|twitter|x\.com|instagram|tiktok|reddit|discord|linkedin|threads|mastodon/i.test(hostname)) {
+            return FLOWER_TYPES.rose;
         }
-        // Default → Daisy (simple, versatile)
+
+        // Media/Entertainment → Dahlia (orange/red, vibrant)
+        if (/netflix|spotify|twitch|hulu|disney|primevideo|soundcloud|vimeo|dailymotion/i.test(hostname)) {
+            return FLOWER_TYPES.dahlia;
+        }
+
+        // Shopping → Marigold (gold, commerce)
+        if (/amazon|ebay|etsy|shopify|walmart|target|aliexpress|wish\.com/i.test(hostname)) {
+            return FLOWER_TYPES.marigold;
+        }
+
+        // Work/Productivity → Lily (teal, professional)
+        if (/slack|notion|figma|linear|asana|trello|airtable|miro|zoom|teams|jira|confluence|basecamp/i.test(hostname)) {
+            return FLOWER_TYPES.lily;
+        }
+
+        // Default → Daisy (neutral, clean)
         return FLOWER_TYPES.daisy;
     } catch {
-        // Random fallback
-        const types = Object.values(FLOWER_TYPES);
-        return types[Math.floor(Math.random() * types.length)];
+        return FLOWER_TYPES.daisy;
+    }
+}
+
+// Get friendly display name for a domain
+function getFriendlyDomainName(url) {
+    try {
+        const urlObj = new URL(url);
+        const hostname = urlObj.hostname.toLowerCase().replace(/^www\./, '');
+
+        // Check exact match first
+        if (DOMAIN_FRIENDLY_NAMES[hostname]) {
+            return DOMAIN_FRIENDLY_NAMES[hostname];
+        }
+
+        // Check subdomain matches (e.g., mail.google.com)
+        const fullPath = hostname + urlObj.pathname;
+        for (const [domain, name] of Object.entries(DOMAIN_FRIENDLY_NAMES)) {
+            if (fullPath.startsWith(domain)) {
+                return name;
+            }
+        }
+
+        // Fallback: clean up the hostname
+        // Remove common TLDs and format nicely
+        let cleanName = hostname
+            .replace(/\.(com|org|net|io|co|app|dev|ai)$/, '')
+            .split('.').pop(); // Get last part before TLD
+
+        // Capitalize first letter
+        cleanName = cleanName.charAt(0).toUpperCase() + cleanName.slice(1);
+
+        // Truncate if too long
+        if (cleanName.length > 12) {
+            cleanName = cleanName.slice(0, 10) + '...';
+        }
+
+        return cleanName;
+    } catch {
+        return 'Tab';
     }
 }
 
@@ -2963,6 +4046,40 @@ class Plant {
         this.hasButterfly = Math.random() < 0.1; // 10% chance to attract a butterfly
         this.glowIntensity = 0;
         this.targetGlow = 0;
+
+        // Load favicon for flower center display
+        this.faviconUrl = tab.favIconUrl || null;
+        if (this.faviconUrl) {
+            loadFavicon(this.faviconUrl);
+        }
+    }
+
+    // Calculate recency scale - recently active tabs appear larger
+    getRecencyScale() {
+        const now = Date.now();
+        const timeSinceActive = now - this.lastActiveTime;
+        const oneHour = 60 * 60 * 1000;
+        const fourHours = 4 * oneHour;
+
+        if (timeSinceActive < oneHour) {
+            // Very recent (< 1 hour): 1.15x - 1.25x scale
+            const freshness = 1 - (timeSinceActive / oneHour);
+            return 1.15 + freshness * 0.1;
+        } else if (timeSinceActive < fourHours) {
+            // Recent (1-4 hours): 1.0x - 1.15x scale
+            const freshness = 1 - ((timeSinceActive - oneHour) / (fourHours - oneHour));
+            return 1.0 + freshness * 0.15;
+        } else if (this.age >= 0.5) {
+            // Wilting: 0.85x - 0.95x scale (slightly smaller)
+            return 0.85 + (1 - this.age) * 0.1;
+        }
+        // Normal: 1.0x
+        return 1.0;
+    }
+
+    // Get friendly display name for this tab's domain
+    getFriendlyName() {
+        return getFriendlyDomainName(this.url || '');
     }
 
     // Update health based on current time, with animation triggers
@@ -3027,8 +4144,9 @@ class Plant {
         // Apply slight rotation for organic feel
         ctx.rotate(this.rotationOffset);
 
-        // Apply growth animation scale with individual variation
-        const baseScale = SCALE * this.growthScale * this.scaleVariation;
+        // Apply growth animation scale with individual variation AND recency scaling
+        const recencyScale = this.getRecencyScale();
+        const baseScale = SCALE * this.growthScale * this.scaleVariation * recencyScale;
 
         // Apply hover effects with warm golden glow
         if (isHovered || this.glowIntensity > 0.01) {
@@ -3085,24 +4203,24 @@ class Plant {
 
         ctx.restore();
 
-        // Draw centered domain name below the flower
+        // Draw centered domain name below the flower (using smart friendly names)
         try {
-            const text = new URL(this.url).hostname.replace('www.', '');
+            const text = this.getFriendlyName();
             ctx.save();
-            ctx.shadowColor = 'rgba(0,0,0,0.2)';
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 1;
+            ctx.shadowColor = 'rgba(0,0,0,0.4)';
+            ctx.shadowBlur = 3;
+            ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 1;
-            const fontSize = Math.min(16, canvas.width / 30); // scales with panel width
-            ctx.font = `${fontSize}px system-ui, sans-serif`;
-            ctx.fillStyle = COLORS.stem;
+            const fontSize = Math.min(13, canvas.width / 32); // slightly smaller for cleaner look
+            ctx.font = `600 ${fontSize}px -apple-system, BlinkMacSystemFont, sans-serif`;
+            ctx.fillStyle = '#FFFFFF'; // Brand white
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
 
-            const textY = this.y + 60;
-            const maxWidth = 90;
+            const textY = this.y + 58;
+            const maxWidth = 85;
 
-            // Wrap to two lines if too long
+            // With friendly names, text should usually fit - but handle overflow gracefully
             if (ctx.measureText(text).width > maxWidth) {
                 const parts = text.split('.');
                 let line1 = '';
@@ -3175,11 +4293,51 @@ class Plant {
         // Draw stamens
         this.drawStamens(ctx);
 
-        // Draw center pistil
-        ctx.fillStyle = COLORS.stem;
-        ctx.beginPath();
-        ctx.arc(0, -2, 2, 0, Math.PI * 2);
-        ctx.fill();
+        // Draw center - either favicon or colored pistil
+        this.drawFlowerCenter(ctx);
+    }
+
+    // Draw flower center with optional favicon
+    drawFlowerCenter(ctx) {
+        const centerRadius = 5;
+        const faviconImg = this.faviconUrl ? faviconCache.get(this.faviconUrl) : null;
+
+        if (faviconImg && faviconImg.complete && faviconImg.naturalWidth > 0) {
+            // Draw circular favicon in center
+            ctx.save();
+
+            // Create circular clip
+            ctx.beginPath();
+            ctx.arc(0, -1, centerRadius, 0, Math.PI * 2);
+            ctx.closePath();
+            ctx.clip();
+
+            // Draw favicon centered
+            const size = centerRadius * 2;
+            ctx.drawImage(faviconImg, -centerRadius, -1 - centerRadius, size, size);
+
+            ctx.restore();
+
+            // Draw subtle border around favicon
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            ctx.arc(0, -1, centerRadius, 0, Math.PI * 2);
+            ctx.stroke();
+        } else {
+            // Fallback: draw colored center pistil
+            const centerColor = this.flowerType?.colors?.center || COLORS.anther;
+            ctx.fillStyle = centerColor;
+            ctx.beginPath();
+            ctx.arc(0, -2, 3, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Inner highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+            ctx.beginPath();
+            ctx.arc(-0.5, -2.5, 1, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
     // Draw a single recurved lily petal with gradient and spots
@@ -3397,30 +4555,52 @@ async function loadGardenSettings() {
 }
 
 async function initGarden() {
-    // Load user settings first
-    await loadGardenSettings();
+    // Show loading state immediately
+    showLoadingState();
 
-    // Apply seasonal theme
-    applySeason();
+    try {
+        // Load user settings first
+        await loadGardenSettings();
 
-    // Load saved coins
-    await loadCoins();
+        // Apply seasonal theme
+        applySeason();
 
-    // Load tab activity data
-    const activityResult = await chrome.storage.local.get(['tabActivity']);
-    const tabActivity = activityResult.tabActivity || {};
+        // Load saved coins
+        await loadCoins();
 
-    const tabs = await chrome.tabs.query({});
-    plants = tabs.map(tab => {
-        const lastActiveTime = tabActivity[tab.id] || Date.now();
-        return new Plant(tab, lastActiveTime);
-    });
-    layoutPlants();
+        // Load tab activity data with error handling
+        const activityResult = await safeAsync(
+            () => chrome.storage.local.get(['tabActivity']),
+            { tabActivity: {} },
+            'loading tab activity'
+        );
+        const tabActivity = activityResult?.tabActivity || {};
 
-    // Create DOM overlay elements for each plant with staggered animation
-    plants.forEach((plant, index) => {
-        plant.element = createPlantElement(plant.tab, plant.x, plant.y, index);
-    });
+        // Query tabs with error handling
+        const tabs = await safeAsync(
+            () => chrome.tabs.query({}),
+            [],
+            'querying tabs'
+        );
+
+        if (!tabs || tabs.length === 0) {
+            console.warn('No tabs found or query failed');
+        }
+
+        plants = tabs.map(tab => {
+            const lastActiveTime = tabActivity[tab.id] || Date.now();
+            return new Plant(tab, lastActiveTime);
+        });
+        layoutPlants();
+
+        // Create DOM overlay elements for each plant with staggered animation
+        plants.forEach((plant, index) => {
+            plant.element = createPlantElement(plant.tab, plant.x, plant.y, index);
+        });
+    } catch (error) {
+        console.error('Failed to initialize garden plants:', error);
+        initializationError = error;
+    }
 
     // Set up Harvest button
     const harvestBtn = document.getElementById('harvestAll');
@@ -3476,6 +4656,12 @@ async function initGarden() {
     // Initial stats display
     updateStatsDisplay();
 
+    // Mark initialization complete
+    isInitialized = true;
+
+    // Hide loading state with slight delay for smooth transition
+    setTimeout(() => hideLoadingState(), 100);
+
     // Start Game Loop
     animationFrameId = requestAnimationFrame(loop);
 
@@ -3483,17 +4669,40 @@ async function initGarden() {
     document.addEventListener('visibilitychange', () => {
         if (document.hidden) {
             if (animationFrameId) cancelAnimationFrame(animationFrameId);
+            // Also pause health checks to reduce background CPU
+            if (healthCheckInterval) {
+                clearInterval(healthCheckInterval);
+                healthCheckInterval = null;
+            }
         } else {
             animationFrameId = requestAnimationFrame(loop);
+            // Resume health checks
+            if (!healthCheckInterval) {
+                healthCheckInterval = setInterval(updateAllPlantHealth, 10000);
+            }
         }
+    });
+
+    // Schedule periodic memory cleanup
+    setInterval(scheduleCleanup, 60000); // Every minute
+
+    // Log successful initialization
+    console.log('TabBloom garden initialized successfully', {
+        plants: plants.length,
+        season: getCurrentSeason(),
+        level: getGardenLevel()?.name
     });
 }
 
 // Periodically update all plant health based on activity
 async function updateAllPlantHealth() {
-    // Reload activity data in case it changed
-    const activityResult = await chrome.storage.local.get(['tabActivity']);
-    const tabActivity = activityResult.tabActivity || {};
+    // Reload activity data in case it changed (with error handling)
+    const activityResult = await safeAsync(
+        () => chrome.storage.local.get(['tabActivity']),
+        { tabActivity: {} },
+        'loading activity data'
+    );
+    const tabActivity = activityResult?.tabActivity || {};
 
     plants.forEach(plant => {
         // Update last active time if it changed
@@ -3503,34 +4712,49 @@ async function updateAllPlantHealth() {
         plant.updateHealth();
     });
 
-    // Update stats display
-    updateStatsDisplay();
+    // Update stats display (debounced to prevent excessive DOM updates)
+    updateStatsDisplayDebounced();
 }
+
+// Debounced version of stats display update
+const updateStatsDisplayDebounced = debounce(updateStatsDisplay, 200);
 
 // Update the stats display in header and footer
 function updateStatsDisplay() {
-    const bloomingCount = plants.filter(p => p.age < 0.3).length;
-    const wiltedCount = plants.filter(p => p.age >= 0.7).length;
+    const healthyCount = plants.filter(p => p.age < 0.3).length;
+    const wiltingCount = plants.filter(p => p.age >= 0.3 && p.age < 0.7).length;
+    const dormantCount = plants.filter(p => p.age >= 0.7).length;
+    const harvestableCount = wiltingCount + dormantCount;
 
-    // Update stats bar
+    // Update stat pills in compact header
     const healthyCountEl = document.getElementById('healthyCount');
     const wiltingCountEl = document.getElementById('wiltingCount');
     const streakCountEl = document.getElementById('streakCount');
+    const streakStat = document.getElementById('streakStat');
     const subtitleEl = document.getElementById('gardenSubtitle');
     const weeklyStatsEl = document.getElementById('weeklyStats');
 
-    if (healthyCountEl) healthyCountEl.textContent = bloomingCount;
-    if (wiltingCountEl) wiltingCountEl.textContent = wiltedCount;
+    if (healthyCountEl) healthyCountEl.textContent = healthyCount;
+    if (wiltingCountEl) wiltingCountEl.textContent = harvestableCount;
     if (streakCountEl) streakCountEl.textContent = gardenStats.currentStreak || 0;
     if (subtitleEl) subtitleEl.textContent = `${plants.length} plants`;
-    if (weeklyStatsEl) weeklyStatsEl.textContent = `${bloomingCount} healthy, ${wiltedCount} wilting`;
+    if (weeklyStatsEl) weeklyStatsEl.textContent = `${healthyCount} healthy, ${harvestableCount} wilting`;
+
+    // Hide streak if zero
+    if (streakStat) {
+        streakStat.setAttribute('data-value', gardenStats.currentStreak || 0);
+    }
+
+    // Update dynamic CTA
+    updateDynamicCTA();
 }
 
-// Harvest all wilted/dormant tabs
+// Harvest all wilting and dormant tabs
 async function harvestDormantTabs() {
-    const dormantPlants = plants.filter(p => p.age >= 0.7);
+    // Now harvest both wilting (age >= 0.3) and dormant (age >= 0.7) tabs
+    const harvestPlants = plants.filter(p => p.age >= 0.3);
 
-    if (dormantPlants.length === 0) {
+    if (harvestPlants.length === 0) {
         Toast.show('All plants are healthy!', 'info');
         return;
     }
@@ -3541,7 +4765,7 @@ async function harvestDormantTabs() {
     // Play harvest chime once for batch
     AudioSystem.playHarvestChime();
 
-    for (const plant of dormantPlants) {
+    for (const plant of harvestPlants) {
         try {
             // Store tab info for undo
             harvestedTabs.push({
@@ -3562,8 +4786,8 @@ async function harvestDormantTabs() {
         }
     }
 
-    // Remove harvested plants from array
-    plants = plants.filter(p => p.age < 0.7);
+    // Remove harvested plants from array (keep only healthy)
+    plants = plants.filter(p => p.age < 0.3);
     layoutPlants();
 
     // Award coins for batch harvest (bonus for efficiency!)
@@ -3639,12 +4863,18 @@ function setupQuickActions() {
     if (quickShare) {
         quickShare.addEventListener('click', () => {
             AudioSystem.playHoverSoft();
-            captureGardenScreenshot();
+            showSharePreview();
         });
     }
 }
 
 function loop(timestamp) {
+    // Safety check - don't run if not initialized
+    if (!isInitialized && !canvas) {
+        console.warn('Loop called before initialization complete');
+        return;
+    }
+
     // FPS throttling
     const frameInterval = getFrameInterval();
     if (timestamp - lastFrameTime < frameInterval) {
@@ -3654,6 +4884,11 @@ function loop(timestamp) {
     lastFrameTime = timestamp;
 
     frameCount++;
+
+    // Periodic cleanup every 500 frames (~8 seconds at 60fps)
+    if (frameCount % 500 === 0) {
+        scheduleCleanup();
+    }
 
     // Minimal mode: skip all decorative effects
     const isMinimal = gardenSettings.minimalMode;
@@ -3950,6 +5185,209 @@ async function showWelcomeTooltip() {
 }
 
 // ============================================
+// Garden Leveling System
+// ============================================
+const GARDEN_LEVELS = [
+    { level: 1, name: 'Seedling', coinsRequired: 0, icon: 'seedling', color: '#8B9A6B' },
+    { level: 2, name: 'Sprout', coinsRequired: 100, icon: 'leaf', color: '#6B8E4E' },
+    { level: 3, name: 'Budding', coinsRequired: 250, icon: 'flower', color: '#4A7C3F' },
+    { level: 4, name: 'Blooming', coinsRequired: 500, icon: 'flower', color: '#00B894' },
+    { level: 5, name: 'Flourishing', coinsRequired: 1000, icon: 'star', color: '#00D9A5' },
+    { level: 6, name: 'Master Gardener', coinsRequired: 2500, icon: 'trophy', color: '#FFD700' }
+];
+
+// Get current garden level based on total coins earned
+function getGardenLevel() {
+    const totalCoins = gardenStats.coinsEarned || 0;
+    let currentLevel = GARDEN_LEVELS[0];
+
+    for (const level of GARDEN_LEVELS) {
+        if (totalCoins >= level.coinsRequired) {
+            currentLevel = level;
+        } else {
+            break;
+        }
+    }
+
+    return currentLevel;
+}
+
+// Get progress to next level (0-1)
+function getLevelProgress() {
+    const totalCoins = gardenStats.coinsEarned || 0;
+    const currentLevel = getGardenLevel();
+    const currentLevelIndex = GARDEN_LEVELS.findIndex(l => l.level === currentLevel.level);
+    const nextLevel = GARDEN_LEVELS[currentLevelIndex + 1];
+
+    if (!nextLevel) {
+        return 1; // Max level reached
+    }
+
+    const coinsInCurrentLevel = totalCoins - currentLevel.coinsRequired;
+    const coinsNeededForNext = nextLevel.coinsRequired - currentLevel.coinsRequired;
+
+    return Math.min(1, coinsInCurrentLevel / coinsNeededForNext);
+}
+
+// Get coins needed for next level
+function getCoinsToNextLevel() {
+    const totalCoins = gardenStats.coinsEarned || 0;
+    const currentLevel = getGardenLevel();
+    const currentLevelIndex = GARDEN_LEVELS.findIndex(l => l.level === currentLevel.level);
+    const nextLevel = GARDEN_LEVELS[currentLevelIndex + 1];
+
+    if (!nextLevel) {
+        return 0; // Max level
+    }
+
+    return nextLevel.coinsRequired - totalCoins;
+}
+
+// Check for level up and trigger celebration
+let previousLevel = null;
+
+function checkLevelUp() {
+    const currentLevel = getGardenLevel();
+
+    if (previousLevel && currentLevel.level > previousLevel.level) {
+        // Level up!
+        celebrateLevelUp(currentLevel);
+    }
+
+    previousLevel = currentLevel;
+    updateLevelDisplay();
+}
+
+// Celebrate level up with toast and confetti
+function celebrateLevelUp(newLevel) {
+    // Play celebration sound
+    AudioSystem.playHarvestAllCelebration();
+
+    // Show level-up toast
+    const toast = document.createElement('div');
+    toast.className = 'toast level-up-toast';
+    toast.innerHTML = `
+        <div class="level-up-icon" aria-hidden="true">
+            ${Icons.get(newLevel.icon, 28)}
+        </div>
+        <div class="level-up-content">
+            <span class="level-up-label">Level Up!</span>
+            <strong class="level-up-name">${newLevel.name}</strong>
+        </div>
+    `;
+
+    Toast.init();
+    Toast.container.appendChild(toast);
+    requestAnimationFrame(() => toast.classList.add('visible'));
+
+    setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+
+    // Confetti burst
+    if (gardenSettings.confettiEnabled && typeof confetti === 'function') {
+        confetti({
+            particleCount: 100,
+            spread: 70,
+            origin: { y: 0.6 },
+            colors: [newLevel.color, '#FFD700', '#00B894', '#FFFFFF']
+        });
+    }
+}
+
+// Update level display in UI
+function updateLevelDisplay() {
+    const level = getGardenLevel();
+    const progress = getLevelProgress();
+    const coinsToNext = getCoinsToNextLevel();
+
+    // Update level indicator in header (if exists)
+    const levelIndicator = document.getElementById('levelIndicator');
+    const levelProgress = document.getElementById('levelProgress');
+    const levelText = document.getElementById('levelText');
+    const levelNum = document.getElementById('levelNum');
+    const levelIcon = document.getElementById('levelIcon');
+    const levelBadge = document.querySelector('.level-badge');
+
+    if (levelIndicator) {
+        levelIndicator.style.setProperty('--level-color', level.color);
+        levelIndicator.setAttribute('data-level', level.level);
+        levelIndicator.title = `Level ${level.level}: ${level.name}`;
+    }
+
+    if (levelBadge) {
+        levelBadge.style.backgroundColor = level.color;
+    }
+
+    if (levelNum) {
+        levelNum.textContent = level.level;
+    }
+
+    if (levelIcon && typeof Icons !== 'undefined') {
+        Icons.insert(levelIcon, level.icon, 12);
+    }
+
+    if (levelProgress) {
+        levelProgress.style.width = `${progress * 100}%`;
+        levelProgress.style.backgroundColor = level.color;
+    }
+
+    if (levelText) {
+        if (coinsToNext > 0) {
+            const nextLevelName = GARDEN_LEVELS.find(l => l.level === level.level + 1)?.name || 'Max';
+            levelText.textContent = `${coinsToNext} to ${nextLevelName}`;
+        } else {
+            levelText.textContent = '✨ Max Level';
+        }
+    }
+}
+
+// ============================================
+// Streak Rewards System
+// ============================================
+const STREAK_REWARDS = [
+    { days: 7, coins: 50, name: 'Weekly Bloom' },
+    { days: 14, coins: 100, name: 'Fortnight Flora' },
+    { days: 30, coins: 250, name: 'Monthly Master' }
+];
+
+function checkStreakRewards() {
+    const streak = gardenStats.currentStreak || 0;
+    const claimedRewards = gardenStats.claimedStreakRewards || [];
+
+    for (const reward of STREAK_REWARDS) {
+        if (streak >= reward.days && !claimedRewards.includes(reward.days)) {
+            // Award streak bonus
+            grantStreakReward(reward);
+            gardenStats.claimedStreakRewards = [...claimedRewards, reward.days];
+            saveGardenStats();
+        }
+    }
+}
+
+function grantStreakReward(reward) {
+    // Add coins
+    updateCoins(reward.coins);
+    gardenStats.coinsEarned += reward.coins;
+
+    // Show reward toast
+    Toast.show(`🔥 ${reward.name}! +${reward.coins} coins for ${reward.days}-day streak`, 'success', 4000);
+
+    // Confetti
+    if (gardenSettings.confettiEnabled && typeof confetti === 'function') {
+        confetti({
+            particleCount: 50,
+            spread: 60,
+            origin: { y: 0.7 },
+            colors: ['#FF9500', '#FFD700', '#FF6B35']
+        });
+    }
+
+    checkLevelUp();
+}
+
+// ============================================
 // Garden Stats (Lifetime Tracking)
 // ============================================
 let gardenStats = {
@@ -3960,7 +5398,8 @@ let gardenStats = {
     longestStreak: 0,
     currentStreak: 0,
     lastVisit: Date.now(),
-    tabsSavedFromWilting: 0
+    tabsSavedFromWilting: 0,
+    claimedStreakRewards: []
 };
 
 async function loadGardenStats() {
@@ -3968,6 +5407,9 @@ async function loadGardenStats() {
     if (result.gardenStats) {
         gardenStats = { ...gardenStats, ...result.gardenStats };
     }
+
+    // Initialize level tracking
+    previousLevel = getGardenLevel();
 
     // Update season visit
     const season = getCurrentSeason();
@@ -3982,11 +5424,19 @@ async function loadGardenStats() {
             gardenStats.longestStreak = gardenStats.currentStreak;
         }
     } else if (daysSinceLastVisit >= 2) {
+        // Streak broken - reset claimed rewards for re-earning
         gardenStats.currentStreak = 1;
+        gardenStats.claimedStreakRewards = [];
     }
     gardenStats.lastVisit = now;
 
     saveGardenStats();
+
+    // Check for streak rewards after a delay (so UI is loaded)
+    setTimeout(() => {
+        checkStreakRewards();
+        updateLevelDisplay();
+    }, 1000);
 }
 
 function saveGardenStats() {
@@ -4099,6 +5549,9 @@ function recordHarvest(count = 1, coins = 10) {
     gardenStats.coinsEarned += coins;
     saveGardenStats();
 
+    // Check for level up
+    checkLevelUp();
+
     // Check for milestone achievements
     for (const milestone of HARVEST_MILESTONES) {
         if (previousTotal < milestone.count && gardenStats.totalHarvested >= milestone.count) {
@@ -4192,91 +5645,161 @@ function getGardenAge() {
 
 function showGardenStats() {
     // Remove existing panel if open
-    const existing = document.getElementById('garden-stats-panel');
-    if (existing) {
-        existing.remove();
+    const existing = document.getElementById('statsModal');
+    if (existing && !existing.classList.contains('hidden')) {
+        existing.classList.add('hidden');
         return;
     }
 
+    const level = getGardenLevel();
+    const progress = getLevelProgress();
+    const coinsToNext = getCoinsToNextLevel();
     const favSeason = getFavoriteSeason();
     const seasonEmojis = { spring: '🌸', summer: '☀️', autumn: '🍂', winter: '❄️' };
     const seasonNames = { spring: 'Spring', summer: 'Summer', autumn: 'Autumn', winter: 'Winter' };
 
-    const panel = document.createElement('div');
-    panel.id = 'garden-stats-panel';
-    panel.style.cssText = `
-        position: fixed;
-        top: 80px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: linear-gradient(135deg, rgba(255,249,245,0.98), rgba(255,236,210,0.98));
-        padding: 20px 24px;
-        border-radius: 16px;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-        z-index: 10000;
-        min-width: 260px;
-        pointer-events: auto;
+    // Category breakdown
+    const categoryBreakdown = getCategoryBreakdown();
+    const topCategories = Object.entries(categoryBreakdown)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .filter(([, count]) => count > 0);
+
+    // Unlocked achievements count
+    const unlockedCount = (gardenStats.unlockedAchievements || []).length;
+    const totalAchievements = ACHIEVEMENTS.length;
+
+    let modal = document.getElementById('statsModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'statsModal';
+        modal.className = 'stats-modal';
+        modal.setAttribute('role', 'dialog');
+        modal.setAttribute('aria-label', 'Garden Statistics');
+        document.body.appendChild(modal);
+
+        // Close on backdrop click
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.classList.add('hidden');
+        });
+    }
+
+    const nextLevelName = GARDEN_LEVELS.find(l => l.level === level.level + 1)?.name || 'Max';
+
+    modal.innerHTML = `
+        <div class="stats-modal-content">
+            <div class="stats-modal-header">
+                <h3>Garden Statistics</h3>
+                <button class="stats-close" aria-label="Close">${Icons.get('close', 16)}</button>
+            </div>
+
+            <!-- Level Section -->
+            <div class="stats-level-section">
+                <div class="stats-level-badge" style="background: ${level.color}">
+                    ${Icons.get(level.icon, 20)}
+                </div>
+                <div class="stats-level-info">
+                    <div class="stats-level-name">Level ${level.level}: ${level.name}</div>
+                    <div class="stats-level-progress-bar">
+                        <div class="stats-level-progress-fill" style="width: ${progress * 100}%; background: ${level.color}"></div>
+                    </div>
+                    <div class="stats-level-subtext">${coinsToNext > 0 ? `${coinsToNext} coins to ${nextLevelName}` : 'Max level reached!'}</div>
+                </div>
+            </div>
+
+            <!-- Main Stats Grid -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-card-value">${gardenStats.coinsEarned}</span>
+                    <span class="stat-card-label">Coins Earned</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-card-value">${gardenStats.totalHarvested}</span>
+                    <span class="stat-card-label">Tabs Harvested</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-card-value">${gardenStats.currentStreak}</span>
+                    <span class="stat-card-label">Day Streak</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-card-value">${gardenStats.tabsSavedFromWilting || 0}</span>
+                    <span class="stat-card-label">Tabs Saved</span>
+                </div>
+            </div>
+
+            <!-- Secondary Stats -->
+            <div class="stats-secondary">
+                <div class="stats-row">
+                    <span class="stats-row-label">Garden Age</span>
+                    <span class="stats-row-value">${getGardenAge()}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-row-label">Longest Streak</span>
+                    <span class="stats-row-value">${gardenStats.longestStreak || 0} days</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-row-label">Favorite Season</span>
+                    <span class="stats-row-value">${seasonEmojis[favSeason]} ${seasonNames[favSeason]}</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-row-label">Achievements</span>
+                    <span class="stats-row-value">${unlockedCount}/${totalAchievements}</span>
+                </div>
+            </div>
+
+            ${topCategories.length > 0 ? `
+            <!-- Category Breakdown -->
+            <div class="stats-section">
+                <div class="stats-section-title">Top Categories</div>
+                <div class="stats-categories">
+                    ${topCategories.map(([cat, count]) => `
+                        <div class="stats-category-item">
+                            <span class="stats-category-dot" style="background: ${getCategoryColor(cat)}"></span>
+                            <span class="stats-category-name">${capitalizeFirst(cat)}</span>
+                            <span class="stats-category-count">${count}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            </div>
+            ` : ''}
+
+            <button class="stats-close-btn btn-primary">Done</button>
+        </div>
     `;
 
-    // Title
-    const title = document.createElement('div');
-    title.style.cssText = 'font-weight: 700; color: #5D7A4A; margin-bottom: 16px; font-size: 16px; text-align: center;';
-    title.textContent = '🌿 Garden Stats';
+    // Attach close handlers
+    modal.querySelector('.stats-close').addEventListener('click', () => modal.classList.add('hidden'));
+    modal.querySelector('.stats-close-btn').addEventListener('click', () => modal.classList.add('hidden'));
 
-    // Stats grid
-    const statsGrid = document.createElement('div');
-    statsGrid.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr; gap: 12px;';
-
-    const statItems = [
-        { label: 'Tabs Saved', value: gardenStats.tabsSavedFromWilting || 0, emoji: '💚' },
-        { label: 'Harvested', value: gardenStats.totalHarvested, emoji: '🌾' },
-        { label: 'Coins Earned', value: gardenStats.coinsEarned, emoji: '✨' },
-        { label: 'Garden Age', value: getGardenAge(), emoji: '🌱' },
-        { label: 'Day Streak', value: `${gardenStats.currentStreak} days`, emoji: '🔥' },
-        { label: 'Favorite Season', value: `${seasonEmojis[favSeason]} ${seasonNames[favSeason]}`, emoji: '' },
-    ];
-
-    statItems.forEach(stat => {
-        const item = document.createElement('div');
-        item.style.cssText = `
-            background: rgba(255,255,255,0.6);
-            padding: 10px;
-            border-radius: 10px;
-            text-align: center;
-        `;
-        item.innerHTML = `
-            <div style="font-size: 18px; font-weight: 700; color: #5D7A4A;">${stat.emoji} ${stat.value}</div>
-            <div style="font-size: 11px; color: #7A6B5A; margin-top: 2px;">${stat.label}</div>
-        `;
-        statsGrid.appendChild(item);
-    });
-
-    // Close button
-    const closeBtn = document.createElement('button');
-    closeBtn.style.cssText = `
-        margin-top: 16px;
-        width: 100%;
-        background: #5D7A4A;
-        color: white;
-        border: none;
-        padding: 10px;
-        border-radius: 10px;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 600;
-    `;
-    closeBtn.textContent = 'Close';
-    closeBtn.addEventListener('click', () => panel.remove());
-
-    // Assemble
-    panel.appendChild(title);
-    panel.appendChild(statsGrid);
-    panel.appendChild(closeBtn);
-
-    document.body.appendChild(panel);
-
-    // Play a soft sound
+    modal.classList.remove('hidden');
     AudioSystem.playHoverSoft();
+}
+
+function getCategoryBreakdown() {
+    const breakdown = {};
+    plants.forEach(plant => {
+        const category = plant.flowerType?.category || 'other';
+        breakdown[category] = (breakdown[category] || 0) + 1;
+    });
+    return breakdown;
+}
+
+function getCategoryColor(category) {
+    const colors = {
+        social: '#FF6B8A',
+        dev: '#7C83FD',
+        ai: '#A78BFA',
+        google: '#4285F4',
+        media: '#FF6B35',
+        shopping: '#FFB347',
+        work: '#00B894',
+        other: '#E9ECEF'
+    };
+    return colors[category] || colors.other;
+}
+
+function capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 // ============================================
@@ -4380,5 +5903,723 @@ function showShareSettingsPanel() {
     document.body.appendChild(panel);
 }
 
+// ============================================
+// A-GRADE UPGRADE: Coach Marks Tutorial System
+// ============================================
+
+const CoachMarks = {
+    steps: [
+        {
+            id: 'welcome',
+            target: '.garden-scroll',
+            icon: '🌱',
+            title: 'Welcome to your garden!',
+            description: 'Each flower represents one of your browser tabs. Watch them grow and bloom!',
+            position: 'center'
+        },
+        {
+            id: 'plants',
+            target: '.plant',
+            icon: '🌸',
+            title: 'These are your tabs',
+            description: 'Healthy tabs bloom brightly. Ignored tabs start to wilt. Click any flower to see options.',
+            position: 'bottom'
+        },
+        {
+            id: 'harvest',
+            target: '#harvestAll',
+            icon: '✂️',
+            title: 'Harvest wilting tabs',
+            description: 'Close unused tabs with one click and earn coins! Keep your garden (and browser) healthy.',
+            position: 'top'
+        },
+        {
+            id: 'level',
+            target: '.level-indicator',
+            icon: '⭐',
+            title: 'Level up your garden',
+            description: 'Earn coins by harvesting to unlock new levels. Can you become a Master Gardener?',
+            position: 'bottom'
+        },
+        {
+            id: 'shortcuts',
+            target: '.header-actions',
+            icon: '⌨️',
+            title: 'Pro tip: Keyboard shortcuts!',
+            description: 'Press ? anytime to see all shortcuts. Try H to harvest, S to search, M for multi-select.',
+            position: 'left'
+        }
+    ],
+
+    currentStep: 0,
+    overlay: null,
+    tooltip: null,
+    spotlight: null,
+
+    async shouldShow() {
+        const result = await chrome.storage.local.get(['coachMarksCompleted', 'coachMarksSkipped']);
+        return !result.coachMarksCompleted && !result.coachMarksSkipped;
+    },
+
+    async start() {
+        if (!(await this.shouldShow())) return;
+
+        // Wait for plants to render
+        await new Promise(r => setTimeout(r, 800));
+
+        // Don't show if no plants exist
+        if (plants.length === 0) return;
+
+        this.currentStep = 0;
+        this.createOverlay();
+        this.showStep(0);
+    },
+
+    createOverlay() {
+        // Remove existing if any
+        this.destroy();
+
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'coach-overlay';
+        this.overlay.setAttribute('role', 'dialog');
+        this.overlay.setAttribute('aria-modal', 'true');
+        this.overlay.setAttribute('aria-label', 'Tutorial');
+
+        this.spotlight = document.createElement('div');
+        this.spotlight.className = 'coach-spotlight';
+
+        this.tooltip = document.createElement('div');
+        this.tooltip.className = 'coach-tooltip';
+
+        this.overlay.appendChild(this.spotlight);
+        this.overlay.appendChild(this.tooltip);
+        document.body.appendChild(this.overlay);
+
+        // Animate in
+        requestAnimationFrame(() => this.overlay.classList.add('visible'));
+    },
+
+    showStep(index) {
+        const step = this.steps[index];
+        if (!step) {
+            this.complete();
+            return;
+        }
+
+        const target = document.querySelector(step.target);
+        if (!target && step.target !== '.garden-scroll') {
+            // Skip this step if target doesn't exist
+            this.showStep(index + 1);
+            return;
+        }
+
+        // Position spotlight
+        if (target && step.position !== 'center') {
+            const rect = target.getBoundingClientRect();
+            const padding = 8;
+            this.spotlight.style.left = `${rect.left - padding}px`;
+            this.spotlight.style.top = `${rect.top - padding}px`;
+            this.spotlight.style.width = `${rect.width + padding * 2}px`;
+            this.spotlight.style.height = `${rect.height + padding * 2}px`;
+            this.spotlight.style.display = 'block';
+        } else {
+            this.spotlight.style.display = 'none';
+        }
+
+        // Position tooltip
+        this.tooltip.setAttribute('data-position', step.position);
+        this.tooltip.innerHTML = `
+            <div class="coach-icon" aria-hidden="true">${step.icon}</div>
+            <h4 class="coach-title">${step.title}</h4>
+            <p class="coach-description">${step.description}</p>
+            <div class="coach-actions">
+                <div class="coach-progress" aria-label="Step ${index + 1} of ${this.steps.length}">
+                    ${this.steps.map((_, i) => `
+                        <span class="coach-dot ${i < index ? 'completed' : ''} ${i === index ? 'active' : ''}"></span>
+                    `).join('')}
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="coach-btn coach-btn--skip" aria-label="Skip tutorial">Skip</button>
+                    <button class="coach-btn coach-btn--next" aria-label="${index === this.steps.length - 1 ? 'Finish' : 'Next step'}">
+                        ${index === this.steps.length - 1 ? 'Got it!' : 'Next'}
+                    </button>
+                </div>
+            </div>
+        `;
+
+        // Position tooltip based on target
+        if (target && step.position !== 'center') {
+            const rect = target.getBoundingClientRect();
+            const tooltipRect = this.tooltip.getBoundingClientRect();
+
+            switch (step.position) {
+                case 'bottom':
+                    this.tooltip.style.top = `${rect.bottom + 16}px`;
+                    this.tooltip.style.left = `${Math.max(16, rect.left + rect.width / 2 - 140)}px`;
+                    break;
+                case 'top':
+                    this.tooltip.style.top = `${rect.top - tooltipRect.height - 16}px`;
+                    this.tooltip.style.left = `${Math.max(16, rect.left + rect.width / 2 - 140)}px`;
+                    break;
+                case 'left':
+                    this.tooltip.style.top = `${rect.top}px`;
+                    this.tooltip.style.left = `${Math.max(16, rect.left - 296)}px`;
+                    break;
+            }
+        } else {
+            // Center position
+            this.tooltip.style.top = '50%';
+            this.tooltip.style.left = '50%';
+            this.tooltip.style.transform = 'translate(-50%, -50%)';
+        }
+
+        // Add event listeners
+        this.tooltip.querySelector('.coach-btn--skip').onclick = () => this.skip();
+        this.tooltip.querySelector('.coach-btn--next').onclick = () => this.next();
+    },
+
+    next() {
+        this.currentStep++;
+        if (this.currentStep >= this.steps.length) {
+            this.complete();
+        } else {
+            this.showStep(this.currentStep);
+        }
+        AudioSystem.playHoverSoft();
+    },
+
+    skip() {
+        chrome.storage.local.set({ coachMarksSkipped: true });
+        this.destroy();
+        AudioSystem.playHoverSoft();
+    },
+
+    complete() {
+        chrome.storage.local.set({ coachMarksCompleted: true });
+        this.destroy();
+        AudioSystem.playGrowthRustle();
+
+        // Show completion toast
+        Toast.show('🎉 Tutorial complete! Press ? for keyboard shortcuts.', 'success', 3000);
+    },
+
+    destroy() {
+        if (this.overlay) {
+            this.overlay.classList.remove('visible');
+            setTimeout(() => this.overlay?.remove(), 300);
+            this.overlay = null;
+            this.tooltip = null;
+            this.spotlight = null;
+        }
+    }
+};
+
+// ============================================
+// A-GRADE UPGRADE: Feature Discovery System
+// ============================================
+
+const FeatureDiscovery = {
+    features: {
+        'keyboardShortcuts': {
+            trigger: 'filterUse',
+            triggerCount: 3,
+            message: 'Pro tip: Press 1, 2, 3 to quick-filter',
+            shown: false
+        },
+        'batchSelect': {
+            trigger: 'plantHover',
+            triggerCount: 5,
+            message: 'Try pressing M for multi-select mode',
+            shown: false
+        },
+        'categoryFilter': {
+            trigger: 'harvest',
+            triggerCount: 5,
+            message: 'Did you know? You can filter by category too',
+            shown: false
+        },
+        'search': {
+            trigger: 'plantClick',
+            triggerCount: 8,
+            message: 'Press S to quickly search your tabs',
+            shown: false
+        }
+    },
+
+    counters: {},
+    shownFeatures: new Set(),
+
+    async init() {
+        const result = await chrome.storage.local.get(['discoveredFeatures']);
+        if (result.discoveredFeatures) {
+            this.shownFeatures = new Set(result.discoveredFeatures);
+        }
+    },
+
+    track(event) {
+        this.counters[event] = (this.counters[event] || 0) + 1;
+
+        // Check if any feature should be discovered
+        for (const [featureId, feature] of Object.entries(this.features)) {
+            if (this.shownFeatures.has(featureId)) continue;
+            if (feature.trigger !== event) continue;
+            if (this.counters[event] < feature.triggerCount) continue;
+
+            this.showDiscoveryTip(featureId, feature);
+            break; // Only show one at a time
+        }
+    },
+
+    showDiscoveryTip(featureId, feature) {
+        this.shownFeatures.add(featureId);
+        chrome.storage.local.set({ discoveredFeatures: Array.from(this.shownFeatures) });
+
+        // Create and show tooltip
+        const tooltip = document.createElement('div');
+        tooltip.className = 'discovery-tooltip';
+        tooltip.setAttribute('role', 'status');
+        tooltip.setAttribute('aria-live', 'polite');
+        tooltip.setAttribute('data-arrow', 'bottom');
+        tooltip.textContent = `💡 ${feature.message}`;
+
+        // Position near bottom center
+        tooltip.style.cssText = `
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+        `;
+
+        document.body.appendChild(tooltip);
+
+        // Auto-dismiss
+        setTimeout(() => {
+            tooltip.style.opacity = '0';
+            tooltip.style.transition = 'opacity 0.3s';
+            setTimeout(() => tooltip.remove(), 300);
+        }, 4000);
+
+        AudioSystem.playHoverSoft();
+    },
+
+    markDiscovered(featureId) {
+        this.shownFeatures.add(featureId);
+        chrome.storage.local.set({ discoveredFeatures: Array.from(this.shownFeatures) });
+    }
+};
+
+// ============================================
+// A-GRADE UPGRADE: Smart Stat Visibility
+// ============================================
+
+function updateStatVisibility() {
+    // Update data-value attributes for CSS-based visibility
+    const streakStat = document.getElementById('streakStat');
+    const wiltingStat = document.querySelector('.stat-pill--wilting');
+
+    const streakCount = gardenStats.currentStreak || 0;
+    const wiltingCount = plants.filter(p => p.age >= 0.3).length;
+
+    if (streakStat) {
+        streakStat.setAttribute('data-value', streakCount);
+    }
+
+    if (wiltingStat) {
+        wiltingStat.setAttribute('data-value', wiltingCount);
+        wiltingStat.setAttribute('data-attention', wiltingCount > 0 ? 'true' : 'false');
+    }
+
+    // Update healthy stat
+    const healthyStat = document.querySelector('.stat-pill--healthy');
+    if (healthyStat) {
+        const healthyCount = plants.filter(p => p.age < 0.3).length;
+        healthyStat.setAttribute('data-value', healthyCount);
+    }
+}
+
+// ============================================
+// A-GRADE UPGRADE: Zero Tabs Empty State
+// ============================================
+
+function showZeroTabsState() {
+    const container = document.getElementById('garden-container');
+    if (!container) return;
+
+    // Check if empty state already exists
+    if (container.querySelector('.empty-garden')) return;
+
+    const emptyState = document.createElement('div');
+    emptyState.className = 'empty-garden';
+    emptyState.setAttribute('role', 'status');
+    emptyState.innerHTML = `
+        <div class="empty-garden-icon" aria-hidden="true">🌱</div>
+        <h3 class="empty-garden-title">Your garden awaits</h3>
+        <p class="empty-garden-desc">Open some tabs to plant your first seeds and watch them grow!</p>
+        <button class="empty-garden-btn" id="openNewTabBtn">Plant a seed</button>
+    `;
+
+    container.appendChild(emptyState);
+
+    // Add click handler
+    emptyState.querySelector('#openNewTabBtn')?.addEventListener('click', () => {
+        chrome.tabs.create({ url: 'chrome://newtab' });
+    });
+}
+
+function hideZeroTabsState() {
+    const emptyState = document.querySelector('.empty-garden');
+    if (emptyState) {
+        emptyState.remove();
+    }
+}
+
+// ============================================
+// A-GRADE UPGRADE: Offline Indicator
+// ============================================
+
+const ConnectionStatus = {
+    isOnline: navigator.onLine,
+
+    init() {
+        window.addEventListener('online', () => this.updateStatus(true));
+        window.addEventListener('offline', () => this.updateStatus(false));
+        this.updateStatus(navigator.onLine);
+    },
+
+    updateStatus(online) {
+        this.isOnline = online;
+        this.updateUI();
+    },
+
+    updateUI() {
+        let banner = document.getElementById('offlineBanner');
+
+        if (!this.isOnline) {
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'offlineBanner';
+                banner.className = 'offline-banner';
+                banner.setAttribute('role', 'alert');
+                banner.innerHTML = `
+                    <span class="offline-banner-icon">📡</span>
+                    <span>Offline — changes will sync when reconnected</span>
+                `;
+
+                // Insert at top of body
+                document.body.insertBefore(banner, document.body.firstChild);
+            }
+            banner.classList.add('visible');
+        } else {
+            banner?.classList.remove('visible');
+        }
+    }
+};
+
+// ============================================
+// A-GRADE UPGRADE: Keyboard Shortcut Hint Bar
+// ============================================
+
+function setupKeyboardHintBar() {
+    // Detect keyboard user
+    document.addEventListener('keydown', function detectKeyboard(e) {
+        if (e.key === 'Tab' || e.key.startsWith('Arrow')) {
+            document.body.classList.add('keyboard-user');
+            showShortcutHintBar();
+        }
+    }, { once: true });
+}
+
+async function showShortcutHintBar() {
+    // Check if dismissed
+    const result = await chrome.storage.local.get(['shortcutHintDismissed']);
+    if (result.shortcutHintDismissed) return;
+
+    // Check if already exists
+    if (document.querySelector('.shortcut-hint-bar')) return;
+
+    const hintBar = document.createElement('div');
+    hintBar.className = 'shortcut-hint-bar';
+    hintBar.setAttribute('role', 'region');
+    hintBar.setAttribute('aria-label', 'Keyboard shortcuts');
+    hintBar.innerHTML = `
+        <span class="shortcut-hint"><kbd>H</kbd> harvest</span>
+        <span class="shortcut-hint"><kbd>S</kbd> search</span>
+        <span class="shortcut-hint"><kbd>M</kbd> select</span>
+        <span class="shortcut-hint"><kbd>?</kbd> all shortcuts</span>
+        <button class="shortcut-hint-dismiss" aria-label="Dismiss shortcuts hint">${Icons.get('close', 12)}</button>
+    `;
+
+    // Insert before footer
+    const footer = document.querySelector('.garden-footer');
+    footer?.parentNode?.insertBefore(hintBar, footer);
+
+    // Dismiss handler
+    hintBar.querySelector('.shortcut-hint-dismiss')?.addEventListener('click', () => {
+        hintBar.classList.add('dismissed');
+        chrome.storage.local.set({ shortcutHintDismissed: true });
+    });
+}
+
+// ============================================
+// A-GRADE UPGRADE: Bottom Sheet (Mobile)
+// ============================================
+
+const BottomSheet = {
+    overlay: null,
+    sheet: null,
+
+    show(plant) {
+        this.destroy();
+
+        // Create overlay
+        this.overlay = document.createElement('div');
+        this.overlay.className = 'bottom-sheet-overlay';
+        this.overlay.addEventListener('click', () => this.hide());
+
+        // Create sheet
+        this.sheet = document.createElement('div');
+        this.sheet.className = 'bottom-sheet';
+        this.sheet.setAttribute('role', 'dialog');
+        this.sheet.setAttribute('aria-modal', 'true');
+
+        const status = getPlantStatus(plant);
+        const statusText = status === 'healthy' ? '🌱 Healthy' :
+                          status === 'wilting' ? '🥀 Wilting' : '💤 Dormant';
+
+        this.sheet.innerHTML = `
+            <div class="bottom-sheet-handle" aria-hidden="true"></div>
+            <div class="bottom-sheet-header">
+                <img class="bottom-sheet-favicon"
+                     src="${plant.faviconUrl || 'icons/icon48.png'}"
+                     alt=""
+                     onerror="this.src='icons/icon48.png'">
+                <h3 class="bottom-sheet-title">${plant.tab.title || 'Untitled'}</h3>
+            </div>
+            <div class="bottom-sheet-meta">
+                ${statusText} • ${getFriendlyDomainName(plant.url || '')}
+            </div>
+            <div class="bottom-sheet-actions">
+                <button class="bottom-sheet-btn bottom-sheet-btn--secondary" data-action="visit">
+                    Visit Tab
+                </button>
+                <button class="bottom-sheet-btn bottom-sheet-btn--primary" data-action="harvest">
+                    Harvest
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(this.overlay);
+        document.body.appendChild(this.sheet);
+
+        // Animate in
+        requestAnimationFrame(() => {
+            this.overlay.classList.add('visible');
+            this.sheet.classList.add('visible');
+        });
+
+        // Action handlers
+        this.sheet.querySelector('[data-action="visit"]')?.addEventListener('click', () => {
+            chrome.tabs.update(plant.tabId, { active: true });
+            this.hide();
+        });
+
+        this.sheet.querySelector('[data-action="harvest"]')?.addEventListener('click', async () => {
+            await harvestSinglePlant(plant);
+            this.hide();
+        });
+
+        // Haptic feedback
+        if (navigator.vibrate) {
+            navigator.vibrate(10);
+        }
+    },
+
+    hide() {
+        this.overlay?.classList.remove('visible');
+        this.sheet?.classList.remove('visible');
+
+        setTimeout(() => this.destroy(), 300);
+    },
+
+    destroy() {
+        this.overlay?.remove();
+        this.sheet?.remove();
+        this.overlay = null;
+        this.sheet = null;
+    }
+};
+
+// Helper to harvest a single plant
+async function harvestSinglePlant(plant) {
+    try {
+        const harvestInfo = {
+            url: plant.tab.url,
+            title: plant.tab.title,
+            favIconUrl: plant.tab.favIconUrl
+        };
+
+        await chrome.tabs.remove(plant.tabId);
+        bloomParticles(plant.x, plant.y);
+
+        if (plant.element) plant.element.remove();
+        plants = plants.filter(p => p !== plant);
+
+        layoutPlants();
+
+        const coinsEarned = gardenSettings.harvestCoins;
+        updateCoins(coinsEarned);
+        recordHarvest(1, coinsEarned);
+        updateStatsDisplay();
+        updateFilterCounts();
+
+        AudioSystem.playHarvestChime();
+
+        // Haptic feedback
+        if (navigator.vibrate) {
+            navigator.vibrate(50);
+        }
+
+        showUndoToast([harvestInfo], coinsEarned);
+    } catch (err) {
+        console.error('Failed to harvest plant:', err);
+        Toast.error('Could not close tab');
+    }
+}
+
+// ============================================
+// A-GRADE UPGRADE: Touch Gesture Support
+// ============================================
+
+const TouchGestures = {
+    startX: 0,
+    startY: 0,
+    currentElement: null,
+    swipeThreshold: 80,
+
+    init() {
+        const container = document.getElementById('garden-container');
+        if (!container) return;
+
+        // Use passive: false to allow preventDefault
+        container.addEventListener('touchstart', (e) => this.handleTouchStart(e), { passive: true });
+        container.addEventListener('touchmove', (e) => this.handleTouchMove(e), { passive: false });
+        container.addEventListener('touchend', (e) => this.handleTouchEnd(e), { passive: true });
+    },
+
+    handleTouchStart(e) {
+        const touch = e.touches[0];
+        this.startX = touch.clientX;
+        this.startY = touch.clientY;
+
+        // Find plant element
+        const plantEl = e.target.closest('.plant');
+        if (plantEl) {
+            this.currentElement = plantEl;
+        }
+    },
+
+    handleTouchMove(e) {
+        if (!this.currentElement) return;
+
+        const touch = e.touches[0];
+        const deltaX = touch.clientX - this.startX;
+        const deltaY = touch.clientY - this.startY;
+
+        // Only handle horizontal swipes
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 20) {
+            e.preventDefault();
+
+            const progress = Math.min(1, Math.abs(deltaX) / this.swipeThreshold);
+            this.currentElement.style.setProperty('--swipe-x', `${deltaX}px`);
+            this.currentElement.style.setProperty('--swipe-progress', progress);
+
+            if (deltaX < 0) {
+                this.currentElement.classList.add('swiping-left');
+                this.currentElement.classList.remove('swiping-right');
+            } else {
+                this.currentElement.classList.add('swiping-right');
+                this.currentElement.classList.remove('swiping-left');
+            }
+        }
+    },
+
+    handleTouchEnd(e) {
+        if (!this.currentElement) return;
+
+        const plantIndex = parseInt(this.currentElement.dataset.plantIndex);
+        const plant = plants[plantIndex];
+
+        const deltaX = (e.changedTouches?.[0]?.clientX || this.startX) - this.startX;
+
+        // Check if swipe exceeded threshold
+        if (Math.abs(deltaX) >= this.swipeThreshold && plant) {
+            if (deltaX < 0) {
+                // Swipe left = harvest
+                harvestSinglePlant(plant);
+            } else {
+                // Swipe right = mark as favorite (future feature)
+                Toast.show('⭐ Favorites coming soon!', 'info');
+            }
+        }
+
+        // Reset element styles
+        this.currentElement.classList.remove('swiping-left', 'swiping-right');
+        this.currentElement.style.removeProperty('--swipe-x');
+        this.currentElement.style.removeProperty('--swipe-progress');
+        this.currentElement = null;
+    }
+};
+
+// ============================================
+// A-GRADE UPGRADE: Initialize All Enhancements
+// ============================================
+
+async function initAGradeFeatures() {
+    // Initialize feature discovery tracking
+    await FeatureDiscovery.init();
+
+    // Set up keyboard hint bar
+    setupKeyboardHintBar();
+
+    // Initialize connection status
+    ConnectionStatus.init();
+
+    // Initialize touch gestures on mobile
+    if ('ontouchstart' in window) {
+        TouchGestures.init();
+    }
+
+    // Update stat visibility
+    updateStatVisibility();
+
+    // Start coach marks tutorial after delay
+    setTimeout(() => CoachMarks.start(), 1500);
+
+    // Check for zero tabs state
+    if (plants.length === 0) {
+        showZeroTabsState();
+    }
+}
+
+// Patch the original updateStatsDisplay to include A-grade features
+const originalUpdateStatsDisplay = typeof updateStatsDisplay === 'function' ? updateStatsDisplay : null;
+
+// Hook into stats updates
+function enhancedStatsUpdate() {
+    updateStatVisibility();
+
+    // Check zero tabs
+    if (plants.length === 0) {
+        showZeroTabsState();
+    } else {
+        hideZeroTabsState();
+    }
+}
+
+// Call after stats display updates
+setInterval(enhancedStatsUpdate, 5000);
+
 resizeCanvas();
-initGarden();
+initGarden().then(() => {
+    initAGradeFeatures();
+});

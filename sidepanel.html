@@ -8,17 +8,88 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <div class="garden-container">
-    <!-- Header -->
-    <header class="garden-header">
+  <!-- Skip Link for Keyboard Navigation -->
+  <a href="#garden-container" class="skip-link">Skip to garden</a>
+
+  <div class="garden-container" role="application" aria-label="TabBloom Digital Garden">
+    <!-- Compact Header with Integrated Stats -->
+    <header class="garden-header" role="banner">
       <div class="header-left">
         <span class="header-icon" id="headerIcon" aria-hidden="true"></span>
         <div class="header-text">
           <h1 id="gardenName" class="garden-title">My Garden</h1>
-          <p class="garden-subtitle" id="gardenSubtitle">12 plants thriving</p>
+          <p class="garden-subtitle" id="gardenSubtitle">12 plants</p>
         </div>
       </div>
+
+      <!-- Level Progress Indicator -->
+      <div class="level-indicator" id="levelIndicator" title="Garden Level">
+        <div class="level-badge">
+          <span class="level-badge-icon" id="levelIcon" aria-hidden="true"></span>
+          <span class="level-badge-num" id="levelNum">1</span>
+        </div>
+        <div class="level-progress-container">
+          <div class="level-progress-bar" id="levelProgress"></div>
+        </div>
+        <span class="level-progress-text" id="levelText">100 to Sprout</span>
+      </div>
+
+      <!-- Inline Stats Pills (A-Grade: Smart visibility via data-value attributes) -->
+      <div class="header-stats" role="group" aria-label="Garden statistics">
+        <div class="stat-pill stat-pill--coins haptic-feedback" title="Total coins earned" data-value="0">
+          <span class="stat-pill-icon" id="coinIcon" aria-hidden="true"></span>
+          <span class="stat-pill-value" id="coinCount">0</span>
+        </div>
+        <div class="stat-pill stat-pill--healthy haptic-feedback" title="Healthy plants" data-value="0">
+          <span class="stat-pill-icon" id="healthyIcon" aria-hidden="true"></span>
+          <span class="stat-pill-value" id="healthyCount">0</span>
+          <span class="sr-only">healthy plants</span>
+        </div>
+        <div class="stat-pill stat-pill--wilting haptic-feedback" title="Wilting plants" data-value="0" data-attention="false">
+          <span class="stat-pill-icon" id="wiltingIcon" aria-hidden="true"></span>
+          <span class="stat-pill-value" id="wiltingCount">0</span>
+          <span class="sr-only">wilting plants</span>
+        </div>
+        <div class="stat-pill stat-pill--streak haptic-feedback" id="streakStat" title="Day streak" data-value="0">
+          <span class="stat-pill-icon" id="streakIcon" aria-hidden="true"></span>
+          <span class="stat-pill-value" id="streakCount">0</span>
+          <span class="sr-only">day streak</span>
+        </div>
+      </div>
+
+      <!-- Header Actions with Overflow Menu -->
       <div class="header-actions">
+        <div class="overflow-menu-container">
+          <button
+            id="overflowMenuBtn"
+            class="btn-icon"
+            aria-label="More actions"
+            aria-haspopup="true"
+            aria-expanded="false"
+            title="More"
+          >
+            <span class="icon" id="overflowIcon" aria-hidden="true"></span>
+          </button>
+          <div id="overflowMenu" class="overflow-menu" role="menu" aria-label="More actions">
+            <button class="overflow-menu-item" id="quickStats" role="menuitem">
+              <span class="overflow-menu-icon" aria-hidden="true"></span>
+              <span>Garden Stats</span>
+            </button>
+            <button class="overflow-menu-item" id="quickShare" role="menuitem">
+              <span class="overflow-menu-icon" aria-hidden="true"></span>
+              <span>Share Garden</span>
+            </button>
+            <button class="overflow-menu-item" id="quickRefresh" role="menuitem">
+              <span class="overflow-menu-icon" aria-hidden="true"></span>
+              <span>Refresh</span>
+            </button>
+            <div class="overflow-menu-divider" role="separator"></div>
+            <button class="overflow-menu-item" id="selectModeToggle" role="menuitem">
+              <span class="overflow-menu-icon" aria-hidden="true"></span>
+              <span>Select Multiple</span>
+            </button>
+          </div>
+        </div>
         <button
           id="settingsBtn"
           class="btn-icon"
@@ -30,60 +101,91 @@
       </div>
     </header>
 
-    <!-- Stats Bar -->
-    <div class="stats-bar">
-      <div class="stat">
-        <span class="stat-icon" id="coinIcon" aria-hidden="true"></span>
-        <span class="stat-value" id="coinCount">0</span>
-        <span class="stat-label">coins</span>
+    <!-- Streamlined Filter Bar -->
+    <div class="filter-bar" role="toolbar" aria-label="Filter plants">
+      <div class="filter-segmented" role="group" aria-label="Filter by status">
+        <button class="filter-segment active" data-filter="all" aria-pressed="true">
+          All
+          <span class="filter-segment-count" id="filterCountAll">0</span>
+        </button>
+        <button class="filter-segment" data-filter="healthy" aria-pressed="false">
+          Healthy
+          <span class="filter-segment-count" id="filterCountHealthy">0</span>
+        </button>
+        <button class="filter-segment" data-filter="wilting" aria-pressed="false">
+          Wilting
+          <span class="filter-segment-count" id="filterCountWilting">0</span>
+        </button>
       </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat">
-        <span class="stat-icon stat-icon--healthy" id="healthyIcon" aria-hidden="true"></span>
-        <span class="stat-value" id="healthyCount">0</span>
-        <span class="stat-label">healthy</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat">
-        <span class="stat-icon stat-icon--wilting" id="wiltingIcon" aria-hidden="true"></span>
-        <span class="stat-value" id="wiltingCount">0</span>
-        <span class="stat-label">wilting</span>
-      </div>
-      <div class="stat-divider" aria-hidden="true"></div>
-      <div class="stat stat--streak" id="streakStat" title="Your current streak">
-        <span class="stat-icon stat-icon--streak" id="streakIcon" aria-hidden="true"></span>
-        <span class="stat-value" id="streakCount">0</span>
-        <span class="stat-label">day streak</span>
+      <div class="filter-actions">
+        <button class="filter-category-toggle" id="categoryToggle" aria-label="Filter by category" aria-expanded="false" title="Filter by category">
+          <span class="icon" id="categoryIcon" aria-hidden="true"></span>
+        </button>
+        <div class="filter-search-container">
+          <button class="filter-search-toggle" id="searchToggle" aria-label="Toggle search" aria-expanded="false">
+            <span class="icon" id="searchIcon" aria-hidden="true"></span>
+          </button>
+          <input
+            type="search"
+            class="filter-search"
+            id="filterSearch"
+            placeholder="Search tabs..."
+            aria-label="Search plants by name or domain"
+          >
+          <button class="filter-search-clear hidden" id="searchClear" aria-label="Clear search">
+            <span class="icon" aria-hidden="true"></span>
+          </button>
+        </div>
       </div>
     </div>
 
-    <!-- Filter Bar -->
-    <div class="filter-bar" role="toolbar" aria-label="Filter plants">
-      <button class="filter-chip active" data-filter="all" aria-pressed="true">
-        All
-        <span class="filter-chip-count" id="filterCountAll">0</span>
+    <!-- Category Filter Dropdown -->
+    <div id="categoryDropdown" class="category-dropdown hidden" role="menu" aria-label="Filter by category">
+      <button class="category-item active" data-category="all" role="menuitem">
+        <span class="category-icon category-icon--all" aria-hidden="true"></span>
+        <span class="category-label">All Categories</span>
+        <span class="category-count" id="catCountAll">0</span>
       </button>
-      <button class="filter-chip" data-filter="healthy" aria-pressed="false">
-        Healthy
-        <span class="filter-chip-count" id="filterCountHealthy">0</span>
+      <div class="category-divider" role="separator"></div>
+      <button class="category-item" data-category="social" role="menuitem">
+        <span class="category-icon category-icon--social" aria-hidden="true"></span>
+        <span class="category-label">Social</span>
+        <span class="category-count" id="catCountSocial">0</span>
       </button>
-      <button class="filter-chip" data-filter="wilting" aria-pressed="false">
-        Wilting
-        <span class="filter-chip-count" id="filterCountWilting">0</span>
+      <button class="category-item" data-category="dev" role="menuitem">
+        <span class="category-icon category-icon--dev" aria-hidden="true"></span>
+        <span class="category-label">Dev Tools</span>
+        <span class="category-count" id="catCountDev">0</span>
       </button>
-      <button class="filter-chip" data-filter="dormant" aria-pressed="false">
-        Dormant
-        <span class="filter-chip-count" id="filterCountDormant">0</span>
+      <button class="category-item" data-category="ai" role="menuitem">
+        <span class="category-icon category-icon--ai" aria-hidden="true"></span>
+        <span class="category-label">AI/Chat</span>
+        <span class="category-count" id="catCountAi">0</span>
       </button>
-      <input
-        type="search"
-        class="filter-search"
-        id="filterSearch"
-        placeholder="Search..."
-        aria-label="Search plants by name or domain"
-      >
-      <button class="filter-chip" id="selectModeToggle" aria-pressed="false" title="Select multiple plants to harvest">
-        Select
+      <button class="category-item" data-category="google" role="menuitem">
+        <span class="category-icon category-icon--google" aria-hidden="true"></span>
+        <span class="category-label">Google</span>
+        <span class="category-count" id="catCountGoogle">0</span>
+      </button>
+      <button class="category-item" data-category="media" role="menuitem">
+        <span class="category-icon category-icon--media" aria-hidden="true"></span>
+        <span class="category-label">Media</span>
+        <span class="category-count" id="catCountMedia">0</span>
+      </button>
+      <button class="category-item" data-category="shopping" role="menuitem">
+        <span class="category-icon category-icon--shopping" aria-hidden="true"></span>
+        <span class="category-label">Shopping</span>
+        <span class="category-count" id="catCountShopping">0</span>
+      </button>
+      <button class="category-item" data-category="work" role="menuitem">
+        <span class="category-icon category-icon--work" aria-hidden="true"></span>
+        <span class="category-label">Work</span>
+        <span class="category-count" id="catCountWork">0</span>
+      </button>
+      <button class="category-item" data-category="other" role="menuitem">
+        <span class="category-icon category-icon--other" aria-hidden="true"></span>
+        <span class="category-label">Other</span>
+        <span class="category-count" id="catCountOther">0</span>
       </button>
     </div>
 
@@ -94,41 +196,14 @@
       <div id="scroll-hint" class="scroll-hint" aria-hidden="true"></div>
     </div>
 
-    <!-- Quick Actions -->
-    <div id="quick-actions" class="quick-actions" role="toolbar" aria-label="Quick actions">
-      <button
-        id="quickStats"
-        class="btn-icon btn-icon--sm"
-        aria-label="View garden statistics"
-        title="Stats"
-      >
-        <span class="icon" aria-hidden="true"></span>
-      </button>
-      <button
-        id="quickShare"
-        class="btn-icon btn-icon--sm"
-        aria-label="Share your garden"
-        title="Share"
-      >
-        <span class="icon" aria-hidden="true"></span>
-      </button>
-      <button
-        id="quickRefresh"
-        class="btn-icon btn-icon--sm"
-        aria-label="Refresh garden"
-        title="Refresh"
-      >
-        <span class="icon" aria-hidden="true"></span>
-      </button>
-    </div>
-
-    <!-- Footer -->
+    <!-- Footer with Dynamic CTA -->
     <footer class="garden-footer">
       <button id="harvestAll" class="btn-primary harvest-btn" aria-label="Harvest all wilted tabs" title="Close all wilting tabs and earn coins">
         <span class="btn-icon-left" id="harvestIcon" aria-hidden="true"></span>
-        <span>Harvest Wilted</span>
+        <span class="harvest-btn-text">Harvest Wilted</span>
+        <span class="harvest-btn-reward" id="harvestReward"></span>
       </button>
-      <p class="stats-text" id="weeklyStats">0 tabs bloomed this week</p>
+      <p class="stats-text" id="weeklyStats">0 healthy, 0 wilting</p>
     </footer>
   </div>
 
@@ -147,68 +222,353 @@
     </div>
   </div>
 
-  <!-- Onboarding Overlay -->
+  <!-- Onboarding Overlay (Progressive Steps) -->
   <div id="onboarding" class="onboarding-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="onboardingTitle">
-    <div class="onboarding-card">
-      <div class="onboarding-icon" id="onboardingFlower" aria-hidden="true"></div>
-      <h2 id="onboardingTitle">Welcome to TabBloom</h2>
-      <p class="onboarding-subtitle">Your browser tabs are now seeds in a digital garden.</p>
-      <ul class="onboarding-tips" role="list">
-        <li>
-          <span class="tip-icon" aria-hidden="true"></span>
-          <span>Active tabs bloom beautifully</span>
-        </li>
-        <li>
-          <span class="tip-icon tip-icon--wilting" aria-hidden="true"></span>
-          <span>Neglected tabs slowly wilt</span>
-        </li>
-        <li>
-          <span class="tip-icon tip-icon--coin" aria-hidden="true"></span>
-          <span>Harvest wilted tabs to earn coins</span>
-        </li>
-        <li>
-          <span class="tip-icon tip-icon--share" aria-hidden="true"></span>
-          <span>Share your garden with friends</span>
-        </li>
-      </ul>
-      <button id="onboardingClose" class="btn-primary onboarding-btn">
-        Start Growing
-      </button>
+    <div class="onboarding-card" data-step="1">
+      <!-- Step Indicator -->
+      <div class="onboarding-steps" role="tablist" aria-label="Onboarding progress">
+        <span class="onboarding-step active" data-step="1" role="tab" aria-selected="true"></span>
+        <span class="onboarding-step" data-step="2" role="tab" aria-selected="false"></span>
+        <span class="onboarding-step" data-step="3" role="tab" aria-selected="false"></span>
+      </div>
+
+      <!-- Step 1: Welcome -->
+      <div class="onboarding-slide active" id="onboardingSlide1">
+        <div class="onboarding-icon" id="onboardingFlower" aria-hidden="true"></div>
+        <h2 id="onboardingTitle">Welcome to TabBloom</h2>
+        <p class="onboarding-subtitle">Turn your browser tabs into a living garden</p>
+      </div>
+
+      <!-- Step 2: How It Works -->
+      <div class="onboarding-slide" id="onboardingSlide2">
+        <div class="onboarding-features">
+          <div class="onboarding-feature">
+            <span class="feature-icon feature-icon--healthy" aria-hidden="true"></span>
+            <div class="feature-text">
+              <strong>Active tabs bloom</strong>
+              <span>Tabs you visit stay healthy and vibrant</span>
+            </div>
+          </div>
+          <div class="onboarding-feature">
+            <span class="feature-icon feature-icon--wilting" aria-hidden="true"></span>
+            <div class="feature-text">
+              <strong>Neglected tabs wilt</strong>
+              <span>Forgotten tabs slowly fade over time</span>
+            </div>
+          </div>
+          <div class="onboarding-feature">
+            <span class="feature-icon feature-icon--harvest" aria-hidden="true"></span>
+            <div class="feature-text">
+              <strong>Harvest to earn coins</strong>
+              <span>Close wilted tabs for rewards</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3: Level Up -->
+      <div class="onboarding-slide" id="onboardingSlide3">
+        <div class="onboarding-icon onboarding-icon--trophy" aria-hidden="true"></div>
+        <h2 class="onboarding-slide-title">Level up your garden</h2>
+        <p class="onboarding-subtitle">Earn coins to unlock new levels. Maintain streaks for bonus rewards!</p>
+        <div class="onboarding-levels">
+          <span class="level-preview level-preview--1">1</span>
+          <span class="level-preview level-preview--2">2</span>
+          <span class="level-preview level-preview--3">3</span>
+          <span class="level-preview-more">+3</span>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <div class="onboarding-nav">
+        <button id="onboardingPrev" class="btn-text onboarding-prev hidden" aria-label="Previous step">
+          Back
+        </button>
+        <button id="onboardingNext" class="btn-primary onboarding-btn" aria-label="Next step">
+          Next
+        </button>
+      </div>
     </div>
   </div>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <!-- Bundled libraries (no external CDN for Chrome Web Store compliance) -->
+  <script src="lib/html2canvas.min.js"></script>
+  <script src="lib/confetti.min.js"></script>
   <script src="icons.js"></script>
   <script src="garden.js"></script>
   <script>
     // Initialize icons after DOM loads
     document.addEventListener('DOMContentLoaded', () => {
       // Header icons
-      Icons.insert(document.getElementById('headerIcon'), 'flower', 24);
-      Icons.insert(document.querySelector('#settingsBtn .icon'), 'settings', 20);
+      Icons.insert(document.getElementById('headerIcon'), 'flower', 20);
+      Icons.insert(document.querySelector('#settingsBtn .icon'), 'settings', 18);
+      Icons.insert(document.getElementById('overflowIcon'), 'more', 18);
 
-      // Stats bar icons
-      Icons.insert(document.getElementById('coinIcon'), 'coin', 16);
-      Icons.insert(document.getElementById('healthyIcon'), 'leaf', 16);
-      Icons.insert(document.getElementById('wiltingIcon'), 'leafDroop', 16);
-      Icons.insert(document.getElementById('streakIcon'), 'fire', 16);
+      // Level badge icon
+      Icons.insert(document.getElementById('levelIcon'), 'seedling', 12);
 
-      // Quick action icons
-      Icons.insert(document.querySelector('#quickStats .icon'), 'chart', 18);
-      Icons.insert(document.querySelector('#quickShare .icon'), 'camera', 18);
-      Icons.insert(document.querySelector('#quickRefresh .icon'), 'refresh', 18);
+      // Stat pill icons (compact)
+      Icons.insert(document.getElementById('coinIcon'), 'coin', 14);
+      Icons.insert(document.getElementById('healthyIcon'), 'leaf', 14);
+      Icons.insert(document.getElementById('wiltingIcon'), 'leafDroop', 14);
+      Icons.insert(document.getElementById('streakIcon'), 'fire', 14);
+
+      // Overflow menu icons
+      Icons.insert(document.querySelector('#quickStats .overflow-menu-icon'), 'chart', 16);
+      Icons.insert(document.querySelector('#quickShare .overflow-menu-icon'), 'camera', 16);
+      Icons.insert(document.querySelector('#quickRefresh .overflow-menu-icon'), 'refresh', 16);
+      Icons.insert(document.querySelector('#selectModeToggle .overflow-menu-icon'), 'check', 16);
+
+      // Search and category icons
+      Icons.insert(document.getElementById('searchIcon'), 'search', 16);
+      Icons.insert(document.querySelector('#searchClear .icon'), 'close', 14);
+      Icons.insert(document.getElementById('categoryIcon'), 'filter', 16);
 
       // Footer icons
       Icons.insert(document.getElementById('harvestIcon'), 'harvest', 18);
 
-      // Onboarding icons
+      // Onboarding icons (progressive)
       Icons.insert(document.getElementById('onboardingFlower'), 'seedling', 48);
-      document.querySelectorAll('.tip-icon').forEach((el, i) => {
-        const icons = ['flower', 'leafDroop', 'coin', 'share'];
-        Icons.insert(el, icons[i], 20);
-      });
+      Icons.insert(document.querySelector('.feature-icon--healthy'), 'flower', 24);
+      Icons.insert(document.querySelector('.feature-icon--wilting'), 'leafDroop', 24);
+      Icons.insert(document.querySelector('.feature-icon--harvest'), 'coin', 24);
+      Icons.insert(document.querySelector('.onboarding-icon--trophy'), 'trophy', 48);
+
+      // Initialize overflow menu
+      initOverflowMenu();
+
+      // Initialize progressive onboarding
+      initProgressiveOnboarding();
+
+      // Initialize collapsible search
+      initCollapsibleSearch();
+
+      // Initialize category filter
+      initCategoryFilter();
     });
+
+    // Overflow Menu Logic
+    function initOverflowMenu() {
+      const btn = document.getElementById('overflowMenuBtn');
+      const menu = document.getElementById('overflowMenu');
+      if (!btn || !menu) return;
+
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = menu.classList.toggle('open');
+        btn.setAttribute('aria-expanded', isOpen);
+      });
+
+      // Close on outside click
+      document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && !btn.contains(e.target)) {
+          menu.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        }
+      });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && menu.classList.contains('open')) {
+          menu.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+          btn.focus();
+        }
+      });
+
+      // Close menu after clicking an item
+      menu.querySelectorAll('.overflow-menu-item').forEach(item => {
+        item.addEventListener('click', () => {
+          menu.classList.remove('open');
+          btn.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
+
+    // Collapsible Search Logic
+    function initCollapsibleSearch() {
+      const toggle = document.getElementById('searchToggle');
+      const container = document.querySelector('.filter-search-container');
+      const input = document.getElementById('filterSearch');
+      const clearBtn = document.getElementById('searchClear');
+      if (!toggle || !container || !input) return;
+
+      toggle.addEventListener('click', () => {
+        const isExpanded = container.classList.toggle('expanded');
+        toggle.setAttribute('aria-expanded', isExpanded);
+        if (isExpanded) {
+          input.focus();
+        } else {
+          input.value = '';
+          input.dispatchEvent(new Event('input'));
+        }
+      });
+
+      // Show/hide clear button
+      input.addEventListener('input', () => {
+        if (clearBtn) {
+          clearBtn.classList.toggle('hidden', !input.value);
+        }
+      });
+
+      // Clear search
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          input.value = '';
+          input.dispatchEvent(new Event('input'));
+          input.focus();
+          clearBtn.classList.add('hidden');
+        });
+      }
+
+      // Collapse on Escape when empty
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (!input.value) {
+            container.classList.remove('expanded');
+            toggle.setAttribute('aria-expanded', 'false');
+            toggle.focus();
+          } else {
+            input.value = '';
+            input.dispatchEvent(new Event('input'));
+          }
+        }
+      });
+    }
+
+    // Progressive Onboarding Logic
+    function initProgressiveOnboarding() {
+      const card = document.querySelector('.onboarding-card');
+      const prevBtn = document.getElementById('onboardingPrev');
+      const nextBtn = document.getElementById('onboardingNext');
+      const slides = document.querySelectorAll('.onboarding-slide');
+      const steps = document.querySelectorAll('.onboarding-step');
+      const totalSteps = slides.length;
+      let currentStep = 1;
+
+      function goToStep(step) {
+        currentStep = step;
+        card.dataset.step = step;
+
+        // Update slides
+        slides.forEach((slide, i) => {
+          slide.classList.toggle('active', i + 1 === step);
+        });
+
+        // Update step indicators
+        steps.forEach((stepEl, i) => {
+          stepEl.classList.toggle('active', i + 1 <= step);
+          stepEl.setAttribute('aria-selected', i + 1 === step);
+        });
+
+        // Update buttons
+        prevBtn.classList.toggle('hidden', step === 1);
+
+        if (step === totalSteps) {
+          nextBtn.textContent = 'Start Growing';
+        } else {
+          nextBtn.textContent = 'Next';
+        }
+      }
+
+      if (prevBtn) {
+        prevBtn.addEventListener('click', () => {
+          if (currentStep > 1) {
+            goToStep(currentStep - 1);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHoverSoft();
+          }
+        });
+      }
+
+      if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+          if (currentStep < totalSteps) {
+            goToStep(currentStep + 1);
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playHoverSoft();
+          } else {
+            // Complete onboarding
+            hideOnboarding();
+            if (typeof AudioSystem !== 'undefined') AudioSystem.playGrowthRustle();
+          }
+        });
+      }
+
+      // Allow clicking step indicators
+      steps.forEach((stepEl, i) => {
+        stepEl.addEventListener('click', () => {
+          goToStep(i + 1);
+        });
+        stepEl.style.cursor = 'pointer';
+      });
+    }
+
+    function hideOnboarding() {
+      const overlay = document.getElementById('onboarding');
+      if (overlay) {
+        overlay.classList.add('hidden');
+      }
+      chrome.storage.local.set({ hasSeenOnboarding: true });
+    }
+
+    // Category Filter Logic
+    function initCategoryFilter() {
+      const toggle = document.getElementById('categoryToggle');
+      const dropdown = document.getElementById('categoryDropdown');
+      const items = document.querySelectorAll('.category-item');
+      if (!toggle || !dropdown) return;
+
+      toggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = dropdown.classList.toggle('hidden') === false;
+        toggle.setAttribute('aria-expanded', isOpen);
+        toggle.classList.toggle('active', isOpen);
+
+        // Update counts when opening
+        if (isOpen && typeof updateCategoryCounts === 'function') {
+          updateCategoryCounts();
+        }
+      });
+
+      // Close on outside click
+      document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target) && !toggle.contains(e.target)) {
+          dropdown.classList.add('hidden');
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Close on Escape
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !dropdown.classList.contains('hidden')) {
+          dropdown.classList.add('hidden');
+          toggle.setAttribute('aria-expanded', 'false');
+          toggle.classList.remove('active');
+        }
+      });
+
+      // Handle category selection
+      items.forEach(item => {
+        item.addEventListener('click', () => {
+          items.forEach(i => i.classList.remove('active'));
+          item.classList.add('active');
+
+          const category = item.dataset.category;
+          if (typeof setCategoryFilter === 'function') {
+            setCategoryFilter(category);
+          }
+
+          // Show active indicator on toggle
+          toggle.classList.toggle('has-filter', category !== 'all');
+
+          // Close dropdown
+          dropdown.classList.add('hidden');
+          toggle.setAttribute('aria-expanded', 'false');
+
+          if (typeof AudioSystem !== 'undefined') AudioSystem.playHoverSoft();
+        });
+      });
+    }
   </script>
 </body>
 </html>
