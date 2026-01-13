@@ -49,6 +49,12 @@
         <span class="stat-value" id="wiltingCount">0</span>
         <span class="stat-label">wilting</span>
       </div>
+      <div class="stat-divider" aria-hidden="true"></div>
+      <div class="stat stat--streak" id="streakStat" title="Your current streak">
+        <span class="stat-icon stat-icon--streak" id="streakIcon" aria-hidden="true"></span>
+        <span class="stat-value" id="streakCount">0</span>
+        <span class="stat-label">day streak</span>
+      </div>
     </div>
 
     <!-- Filter Bar -->
@@ -76,7 +82,7 @@
         placeholder="Search..."
         aria-label="Search plants by name or domain"
       >
-      <button class="filter-chip" id="selectModeToggle" aria-pressed="false">
+      <button class="filter-chip" id="selectModeToggle" aria-pressed="false" title="Select multiple plants to harvest">
         Select
       </button>
     </div>
@@ -118,7 +124,7 @@
 
     <!-- Footer -->
     <footer class="garden-footer">
-      <button id="harvestAll" class="btn-primary harvest-btn" aria-label="Harvest all wilted tabs">
+      <button id="harvestAll" class="btn-primary harvest-btn" aria-label="Harvest all wilted tabs" title="Close all wilting tabs and earn coins">
         <span class="btn-icon-left" id="harvestIcon" aria-hidden="true"></span>
         <span>Harvest Wilted</span>
       </button>
@@ -133,9 +139,9 @@
       <span>selected</span>
     </div>
     <div class="batch-actions">
-      <button class="btn-text" id="batchSelectAll">Select All</button>
-      <button class="btn-text" id="batchCancel">Cancel</button>
-      <button class="btn-primary btn-sm" id="batchHarvest" aria-label="Harvest selected plants">
+      <button class="btn-text" id="batchSelectAll" title="Select all plants">Select All</button>
+      <button class="btn-text" id="batchCancel" title="Exit selection mode">Cancel</button>
+      <button class="btn-primary btn-sm" id="batchHarvest" aria-label="Harvest selected plants" title="Harvest selected plants">
         Harvest
       </button>
     </div>
@@ -186,6 +192,7 @@
       Icons.insert(document.getElementById('coinIcon'), 'coin', 16);
       Icons.insert(document.getElementById('healthyIcon'), 'leaf', 16);
       Icons.insert(document.getElementById('wiltingIcon'), 'leafDroop', 16);
+      Icons.insert(document.getElementById('streakIcon'), 'fire', 16);
 
       // Quick action icons
       Icons.insert(document.querySelector('#quickStats .icon'), 'chart', 18);

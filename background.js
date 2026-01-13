@@ -7,7 +7,7 @@ chrome.sidePanel.setPanelBehavior({
   console.error("Failed to set openPanelOnActionClick:", error);
 });
 
-console.log("TabBloom background service started");
+// Service worker initialized
 
 // Track tab activity timestamps
 async function updateTabActivity(tabId) {
@@ -66,7 +66,6 @@ async function initializeTabActivity() {
   });
 
   await chrome.storage.local.set({ tabActivity });
-  console.log(`TabBloom tracking ${Object.keys(tabActivity).length} tabs`);
 }
 
 // Run initialization

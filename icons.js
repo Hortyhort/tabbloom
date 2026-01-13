@@ -71,6 +71,12 @@ const Icons = {
     <circle cx="10" cy="10" r="4"/>
   </svg>`,
 
+  fire: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 2c0 3-2 5-2 8 0 2.5 2 4 4 4s4-1.5 4-4c0-4-3-6-3-8"/>
+    <path d="M10 18c-2 0-4-1.5-4-4 0-3 2-5 2-8"/>
+    <path d="M10 12c0 1 .5 2 2 2s2-1 2-2c0-2-1.5-3-1.5-4"/>
+  </svg>`,
+
   chart: `<svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
     <rect x="3" y="10" width="3" height="7"/>
     <rect x="8.5" y="6" width="3" height="11"/>
@@ -83,6 +89,14 @@ const Icons = {
     <path d="M15 5h2a1 1 0 0 1 1 1v1a3 3 0 0 1-3 3"/>
     <path d="M10 13v3"/>
     <path d="M6 18h8"/>
+  </svg>`,
+
+  star: `<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 2l2.39 4.84 5.34.78-3.87 3.77.91 5.32L10 14.27l-4.77 2.44.91-5.32-3.87-3.77 5.34-.78L10 2z"/>
+  </svg>`,
+
+  heart: `<svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 17.5s-7-4.5-7-9c0-2.5 2-4.5 4.5-4.5 1.5 0 2.5.7 2.5.7s1-.7 2.5-.7c2.5 0 4.5 2 4.5 4.5 0 4.5-7 9-7 9z"/>
   </svg>`,
 
   // ========== Settings Icons ==========

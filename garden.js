@@ -37,6 +37,10 @@ let gardenSettings = {
 let lastFrameTime = 0;
 const getFrameInterval = () => 1000 / gardenSettings.targetFps;
 
+// Interval/animation cleanup
+let healthCheckInterval = null;
+let animationFrameId = null;
+
 // Wilt speed multipliers (hours until fully wilted)
 const WILT_SPEEDS = {
     slow: 24,
@@ -121,17 +125,53 @@ function showEmptyState() {
     const existing = container.querySelector('.empty-state');
     if (existing) existing.remove();
 
+    // Check if user is brand new or just harvested all
+    const hasHarvested = gardenStats.totalHarvested > 0;
+
     const emptyState = document.createElement('div');
     emptyState.className = 'empty-state';
-    emptyState.innerHTML = `
-        <div class="empty-state-icon" aria-hidden="true">
-            ${Icons.get('seedling', 48)}
-        </div>
-        <h3 class="empty-state-title">Your garden is empty</h3>
-        <p class="empty-state-description">
-            Open some browser tabs to plant flowers in your garden.
-        </p>
-    `;
+
+    if (hasHarvested) {
+        // User has history - they just cleared their garden
+        emptyState.innerHTML = `
+            <div class="empty-state-icon empty-state-icon--success" aria-hidden="true">
+                ${Icons.get('check', 48)}
+            </div>
+            <h3 class="empty-state-title">Garden cleared!</h3>
+            <p class="empty-state-description">
+                All tabs harvested. Open new tabs to grow more flowers.
+            </p>
+            <div class="empty-state-stats">
+                <span class="empty-state-stat">${gardenStats.totalHarvested} tabs harvested</span>
+                <span class="empty-state-stat">${gardenStats.coinsEarned} coins earned</span>
+            </div>
+        `;
+    } else {
+        // Brand new user - more welcoming
+        emptyState.innerHTML = `
+            <div class="empty-state-icon empty-state-icon--animated" aria-hidden="true">
+                ${Icons.get('seedling', 48)}
+            </div>
+            <h3 class="empty-state-title">Plant your first flower</h3>
+            <p class="empty-state-description">
+                Every tab you open becomes a flower in your garden. Watch them grow!
+            </p>
+            <div class="empty-state-tips">
+                <div class="empty-state-tip">
+                    ${Icons.get('flower', 16)}
+                    <span>Active tabs bloom beautifully</span>
+                </div>
+                <div class="empty-state-tip">
+                    ${Icons.get('leafDroop', 16)}
+                    <span>Unused tabs slowly wilt</span>
+                </div>
+                <div class="empty-state-tip">
+                    ${Icons.get('coin', 16)}
+                    <span>Harvest wilted tabs to earn coins</span>
+                </div>
+            </div>
+        `;
+    }
 
     container.appendChild(emptyState);
 }
@@ -207,7 +247,10 @@ function showPlantDetail(plant) {
                 <button class="btn-primary" id="detail-go-to-tab" aria-label="Go to this tab">
                     Go to Tab
                 </button>
-                <button class="btn-icon" id="detail-harvest" aria-label="Harvest this plant" title="Harvest">
+                <button class="btn-icon" id="detail-close-tab" aria-label="Close this tab" title="Close Tab">
+                    ${Icons.get('close', 20)}
+                </button>
+                <button class="btn-icon" id="detail-harvest" aria-label="Harvest this plant" title="Harvest (+${gardenSettings.harvestCoins} coins)">
                     ${Icons.get('harvest', 20)}
                 </button>
             </div>
@@ -217,6 +260,11 @@ function showPlantDetail(plant) {
     // Set up action handlers
     document.getElementById('detail-go-to-tab').addEventListener('click', () => {
         chrome.tabs.update(tab.id, { active: true });
+        hidePlantDetail();
+    });
+
+    document.getElementById('detail-close-tab').addEventListener('click', async () => {
+        await closeSingleTab(plant);
         hidePlantDetail();
     });
 
@@ -278,7 +326,28 @@ async function harvestSinglePlant(plant) {
             showEmptyState();
         }
     } catch (err) {
-        console.error("Failed to close tab:", err);
+        Toast.error("Couldn't close tab");
+    }
+}
+
+async function closeSingleTab(plant) {
+    if (!plant) return;
+
+    try {
+        await chrome.tabs.remove(plant.tab.id);
+        if (plant.element) plant.element.remove();
+        plants = plants.filter(p => p !== plant);
+        layoutPlants();
+        updateStatsDisplay();
+        updateFilterCounts();
+
+        Toast.show('Tab closed', 'info', 2000);
+
+        // Show empty state if no plants left
+        if (plants.length === 0) {
+            showEmptyState();
+        }
+    } catch (err) {
         Toast.error("Couldn't close tab");
     }
 }
@@ -560,7 +629,7 @@ async function harvestSelectedPlants() {
             particleCount: 60 + harvestedCount * 8,
             spread: 60,
             origin: { y: 0.6 },
-            colors: ['#34C759', '#FFD60A', '#007AFF', '#5856D6', '#FF9500']
+            colors: ['#00B894', '#FFD60A', '#007AFF', '#5856D6', '#FF9500']
         });
     }
 }
@@ -2026,9 +2095,33 @@ function updateCoins(amount) {
     const coinDisplay = document.getElementById('coinCount');
     if (coinDisplay) {
         coinDisplay.textContent = currentCoins;
+
+        // Animate coin gain (positive amounts only)
+        if (amount > 0 && gardenSettings.animationsEnabled) {
+            showCoinAnimation(coinDisplay, amount);
+        }
     }
     // Save to storage
     chrome.storage.local.set({ coins: currentCoins });
+}
+
+// Floating coin animation when earning coins
+function showCoinAnimation(element, amount) {
+    const rect = element.getBoundingClientRect();
+    const floater = document.createElement('div');
+    floater.className = 'coin-floater';
+    floater.textContent = `+${amount}`;
+    floater.style.left = `${rect.left + rect.width / 2}px`;
+    floater.style.top = `${rect.top}px`;
+    document.body.appendChild(floater);
+
+    // Trigger animation
+    requestAnimationFrame(() => {
+        floater.classList.add('animate');
+    });
+
+    // Remove after animation
+    setTimeout(() => floater.remove(), 1000);
 }
 
 // Load coins from storage
@@ -3299,7 +3392,7 @@ async function loadGardenSettings() {
             document.documentElement.style.setProperty('--animation-state', 'paused');
         }
     } catch (err) {
-        console.log('Using default settings');
+        // Using default settings
     }
 }
 
@@ -3353,6 +3446,10 @@ async function initGarden() {
     // Load garden stats for tracking
     await loadGardenStats();
 
+    // Load achievements
+    await loadAchievements();
+    checkAchievements();
+
     // Set up onboarding
     setupOnboarding();
     await checkOnboarding();
@@ -3373,13 +3470,23 @@ async function initGarden() {
     await showWelcomeTooltip();
 
     // Update plant health every 10 seconds
-    setInterval(updateAllPlantHealth, 10000);
+    if (healthCheckInterval) clearInterval(healthCheckInterval);
+    healthCheckInterval = setInterval(updateAllPlantHealth, 10000);
 
     // Initial stats display
     updateStatsDisplay();
 
     // Start Game Loop
-    requestAnimationFrame(loop);
+    animationFrameId = requestAnimationFrame(loop);
+
+    // Pause animations when panel is hidden to save CPU
+    document.addEventListener('visibilitychange', () => {
+        if (document.hidden) {
+            if (animationFrameId) cancelAnimationFrame(animationFrameId);
+        } else {
+            animationFrameId = requestAnimationFrame(loop);
+        }
+    });
 }
 
 // Periodically update all plant health based on activity
@@ -3408,11 +3515,13 @@ function updateStatsDisplay() {
     // Update stats bar
     const healthyCountEl = document.getElementById('healthyCount');
     const wiltingCountEl = document.getElementById('wiltingCount');
+    const streakCountEl = document.getElementById('streakCount');
     const subtitleEl = document.getElementById('gardenSubtitle');
     const weeklyStatsEl = document.getElementById('weeklyStats');
 
     if (healthyCountEl) healthyCountEl.textContent = bloomingCount;
     if (wiltingCountEl) wiltingCountEl.textContent = wiltedCount;
+    if (streakCountEl) streakCountEl.textContent = gardenStats.currentStreak || 0;
     if (subtitleEl) subtitleEl.textContent = `${plants.length} plants`;
     if (weeklyStatsEl) weeklyStatsEl.textContent = `${bloomingCount} healthy, ${wiltedCount} wilting`;
 }
@@ -3479,12 +3588,10 @@ async function harvestDormantTabs() {
                 particleCount: 80 + harvestedCount * 10,
                 spread: 70,
                 origin: { y: 0.6 },
-                colors: ['#34C759', '#FFD60A', '#007AFF', '#5856D6', '#FF9500']
+                colors: ['#00B894', '#FFD60A', '#007AFF', '#5856D6', '#FF9500']
             });
         }
     }
-
-    console.log(`Harvested ${harvestedCount} dormant tabs!`);
 }
 
 // Set up Quick Actions mini-bar
@@ -3541,7 +3648,7 @@ function loop(timestamp) {
     // FPS throttling
     const frameInterval = getFrameInterval();
     if (timestamp - lastFrameTime < frameInterval) {
-        requestAnimationFrame(loop);
+        animationFrameId = requestAnimationFrame(loop);
         return;
     }
     lastFrameTime = timestamp;
@@ -3669,7 +3776,7 @@ function loop(timestamp) {
         drawScanlines();
     }
 
-    requestAnimationFrame(loop);
+    animationFrameId = requestAnimationFrame(loop);
 }
 
 // Subtle scanline effect for retro pixel-art feel
@@ -3886,10 +3993,173 @@ function saveGardenStats() {
     chrome.storage.local.set({ gardenStats });
 }
 
+// ============================================
+// Achievement System
+// ============================================
+const ACHIEVEMENTS = [
+    // Harvest achievements
+    { id: 'first_harvest', name: 'First Bloom', description: 'Harvest your first wilted tab', icon: 'seedling', check: () => gardenStats.totalHarvested >= 1 },
+    { id: 'harvester_10', name: 'Green Thumb', description: 'Harvest 10 tabs', icon: 'leaf', check: () => gardenStats.totalHarvested >= 10 },
+    { id: 'harvester_50', name: 'Master Gardener', description: 'Harvest 50 tabs', icon: 'flower', check: () => gardenStats.totalHarvested >= 50 },
+    { id: 'harvester_100', name: 'Tab Whisperer', description: 'Harvest 100 tabs', icon: 'trophy', check: () => gardenStats.totalHarvested >= 100 },
+
+    // Coin achievements
+    { id: 'coins_100', name: 'Penny Saver', description: 'Earn 100 coins', icon: 'coin', check: () => gardenStats.coinsEarned >= 100 },
+    { id: 'coins_500', name: 'Coin Collector', description: 'Earn 500 coins', icon: 'coin', check: () => gardenStats.coinsEarned >= 500 },
+    { id: 'coins_1000', name: 'Rich Gardener', description: 'Earn 1000 coins', icon: 'star', check: () => gardenStats.coinsEarned >= 1000 },
+
+    // Streak achievements
+    { id: 'streak_3', name: 'Regular Visitor', description: 'Maintain a 3-day streak', icon: 'fire', check: () => gardenStats.longestStreak >= 3 },
+    { id: 'streak_7', name: 'Weekly Warrior', description: 'Maintain a 7-day streak', icon: 'fire', check: () => gardenStats.longestStreak >= 7 },
+    { id: 'streak_30', name: 'Monthly Master', description: 'Maintain a 30-day streak', icon: 'fire', check: () => gardenStats.longestStreak >= 30 },
+
+    // Activity achievements
+    { id: 'saver_10', name: 'Tab Saver', description: 'Save 10 tabs from wilting', icon: 'heart', check: () => (gardenStats.tabsSavedFromWilting || 0) >= 10 },
+];
+
+let unlockedAchievements = new Set();
+
+async function loadAchievements() {
+    const result = await chrome.storage.local.get(['achievements']);
+    if (result.achievements) {
+        unlockedAchievements = new Set(result.achievements);
+    }
+}
+
+function saveAchievements() {
+    chrome.storage.local.set({ achievements: [...unlockedAchievements] });
+}
+
+function checkAchievements() {
+    let newlyUnlocked = [];
+
+    for (const achievement of ACHIEVEMENTS) {
+        if (!unlockedAchievements.has(achievement.id) && achievement.check()) {
+            unlockedAchievements.add(achievement.id);
+            newlyUnlocked.push(achievement);
+        }
+    }
+
+    if (newlyUnlocked.length > 0) {
+        saveAchievements();
+        // Show notification for first new achievement
+        showAchievementUnlocked(newlyUnlocked[0]);
+    }
+
+    return newlyUnlocked;
+}
+
+function showAchievementUnlocked(achievement) {
+    Toast.init();
+    const toast = document.createElement('div');
+    toast.className = 'toast achievement-toast';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <span class="achievement-badge" aria-hidden="true">${Icons.get(achievement.icon, 20)}</span>
+        <div class="achievement-content">
+            <span class="achievement-label">Achievement Unlocked!</span>
+            <strong class="achievement-name">${achievement.name}</strong>
+        </div>
+    `;
+    Toast.container.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add('visible'));
+
+    setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function getAchievementProgress() {
+    return {
+        unlocked: unlockedAchievements.size,
+        total: ACHIEVEMENTS.length,
+        achievements: ACHIEVEMENTS.map(a => ({
+            ...a,
+            unlocked: unlockedAchievements.has(a.id)
+        }))
+    };
+}
+
+// Harvest milestones for celebrations
+const HARVEST_MILESTONES = [
+    { count: 1, title: 'First Harvest!', message: 'You harvested your first wilted tab. Your garden journey begins!' },
+    { count: 10, title: 'Green Thumb', message: '10 tabs harvested! You\'re getting the hang of this.' },
+    { count: 25, title: 'Garden Keeper', message: '25 tabs harvested! Your garden is flourishing.' },
+    { count: 50, title: 'Master Gardener', message: '50 tabs harvested! You\'re a true garden master.' },
+    { count: 100, title: 'Tab Whisperer', message: '100 tabs harvested! Legendary status achieved.' },
+    { count: 250, title: 'Digital Botanist', message: '250 tabs harvested! Your dedication is inspiring.' },
+    { count: 500, title: 'Garden Legend', message: '500 tabs harvested! A true legend walks among us.' }
+];
+
 function recordHarvest(count = 1, coins = 10) {
+    const previousTotal = gardenStats.totalHarvested;
     gardenStats.totalHarvested += count;
     gardenStats.coinsEarned += coins;
     saveGardenStats();
+
+    // Check for milestone achievements
+    for (const milestone of HARVEST_MILESTONES) {
+        if (previousTotal < milestone.count && gardenStats.totalHarvested >= milestone.count) {
+            showMilestoneCelebration(milestone);
+            break; // Only show one milestone at a time
+        }
+    }
+
+    // Check for badge achievements
+    checkAchievements();
+}
+
+function showMilestoneCelebration(milestone) {
+    // Extra confetti burst for milestones
+    if (gardenSettings.confettiEnabled && typeof confetti === 'function') {
+        // Multiple bursts for extra celebration
+        confetti({
+            particleCount: 100,
+            spread: 90,
+            origin: { y: 0.5 },
+            colors: ['#FFD60A', '#FF9500', '#00B894', '#5856D6', '#FF2D55']
+        });
+        setTimeout(() => {
+            confetti({
+                particleCount: 50,
+                angle: 60,
+                spread: 55,
+                origin: { x: 0 },
+                colors: ['#FFD60A', '#FF9500', '#00B894']
+            });
+            confetti({
+                particleCount: 50,
+                angle: 120,
+                spread: 55,
+                origin: { x: 1 },
+                colors: ['#FFD60A', '#FF9500', '#00B894']
+            });
+        }, 200);
+    }
+
+    // Create milestone toast
+    Toast.init();
+    const toast = document.createElement('div');
+    toast.className = 'toast milestone-toast';
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+        <span class="milestone-icon" aria-hidden="true">${Icons.get('star', 24)}</span>
+        <div class="milestone-content">
+            <strong class="milestone-title">${milestone.title}</strong>
+            <span class="milestone-message">${milestone.message}</span>
+        </div>
+    `;
+    Toast.container.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add('visible'));
+
+    // Longer display for milestones
+    setTimeout(() => {
+        toast.classList.remove('visible');
+        setTimeout(() => toast.remove(), 300);
+    }, 5000);
 }
 
 function recordTabSaved() {

@@ -33,12 +33,25 @@
   --space-10: 40px;
   --space-12: 48px;
 
+  /* ========== TABBLOOM BRAND COLORS ========== */
+  /* Official brand colors - DO NOT CHANGE */
+  /* Derived from v27 lily logo */
+  --brand-green: #00B894;
+  --brand-green-light: #00D9A5;
+  --brand-white: #FFFFFF;
+
+  /* Aliases for use throughout the app */
+  --logo-green: var(--brand-green);
+  --logo-green-light: var(--brand-green-light);
+  --logo-white: var(--brand-white);
+
   /* ========== Single Accent Color System ========== */
-  --accent-primary: #34C759;
-  --accent-primary-hover: #2DB84E;
-  --accent-primary-active: #28A745;
-  --accent-subtle: rgba(52, 199, 89, 0.12);
-  --accent-muted: rgba(52, 199, 89, 0.08);
+  /* Based on brand colors */
+  --accent-primary: var(--brand-green);
+  --accent-primary-hover: #00A685;
+  --accent-primary-active: #009476;
+  --accent-subtle: rgba(0, 184, 148, 0.12);
+  --accent-muted: rgba(0, 184, 148, 0.08);
 
   /* ========== Neutral Palette ========== */
   --gray-50: #F9FAFB;
@@ -68,7 +81,7 @@
   --border-strong: var(--gray-300);
 
   /* Status Colors */
-  --color-success: #34C759;
+  --color-success: var(--brand-green);
   --color-warning: #FF9500;
   --color-danger: #FF3B30;
   --color-info: #007AFF;
