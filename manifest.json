@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "TabBloom - Digital Garden Tab Manager",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Transform your tabs into a thriving digital garden. Watch them bloom when active, wilt when ignored. Mindful tab management meets delightful design.",
   "icons": {
     "16": "icons/icon16.png",
