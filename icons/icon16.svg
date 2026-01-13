@@ -1,28 +1,24 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16">
   <defs>
-    <!-- Warm sunset gradient -->
-    <linearGradient id="bgGradient16" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF9500"/>
-      <stop offset="100%" stop-color="#FFD60A"/>
+    <linearGradient id="bg16" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00B894"/>
+      <stop offset="100%" stop-color="#00D9A5"/>
     </linearGradient>
   </defs>
 
   <!-- Rounded square background -->
-  <rect x="1" y="1" width="14" height="14" rx="3" ry="3" fill="url(#bgGradient16)"/>
+  <rect x="1" y="1" width="14" height="14" rx="3" ry="3" fill="url(#bg16)"/>
 
-  <!-- Ultra-minimal flower silhouette -->
-  <g transform="translate(8, 6.5)">
-    <!-- 5 simple petals -->
-    <ellipse cx="0" cy="-3" rx="2" ry="2.8" fill="white" transform="rotate(0)"/>
-    <ellipse cx="0" cy="-2.8" rx="1.8" ry="2.5" fill="white" transform="rotate(72)"/>
-    <ellipse cx="0" cy="-2.6" rx="1.8" ry="2.3" fill="white" transform="rotate(144)"/>
-    <ellipse cx="0" cy="-2.6" rx="1.8" ry="2.3" fill="white" transform="rotate(216)"/>
-    <ellipse cx="0" cy="-2.8" rx="1.8" ry="2.5" fill="white" transform="rotate(288)"/>
+  <!-- Ultra-simple 5-petal flower silhouette -->
+  <g transform="translate(8, 8)">
+    <!-- 5 simple tab-petals -->
+    <path d="M-1.8 -2.5 Q-1.8 -5.5 0 -6 Q1.8 -5.5 1.8 -2.5 L1 -1 Q0 -0.3 -1 -1 Z" fill="white" transform="rotate(0)"/>
+    <path d="M-1.6 -2.3 Q-1.6 -5 0 -5.5 Q1.6 -5 1.6 -2.3 L0.9 -0.9 Q0 -0.3 -0.9 -0.9 Z" fill="white" transform="rotate(72)"/>
+    <path d="M-1.6 -2.2 Q-1.6 -4.8 0 -5.3 Q1.6 -4.8 1.6 -2.2 L0.9 -0.8 Q0 -0.3 -0.9 -0.8 Z" fill="white" transform="rotate(144)"/>
+    <path d="M-1.6 -2.2 Q-1.6 -4.8 0 -5.3 Q1.6 -4.8 1.6 -2.2 L0.9 -0.8 Q0 -0.3 -0.9 -0.8 Z" fill="white" transform="rotate(216)"/>
+    <path d="M-1.6 -2.3 Q-1.6 -5 0 -5.5 Q1.6 -5 1.6 -2.3 L0.9 -0.9 Q0 -0.3 -0.9 -0.9 Z" fill="white" transform="rotate(288)"/>
 
-    <!-- Golden center -->
-    <circle cx="0" cy="0" r="1.5" fill="#FFD700"/>
+    <!-- Golden center dot -->
+    <circle cx="0" cy="0" r="2" fill="#FFB300"/>
   </g>
-
-  <!-- Tiny stem/base hint -->
-  <rect x="7" y="10" width="2" height="3" rx="1" fill="white" opacity="0.85"/>
 </svg>

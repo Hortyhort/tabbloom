@@ -1,88 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
   <defs>
-    <!-- Warm sunset gradient background -->
-    <linearGradient id="bgGradientLogo" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF9500"/>
-      <stop offset="50%" stop-color="#FFAB40"/>
-      <stop offset="100%" stop-color="#FFD60A"/>
+    <!-- Fresh teal-to-green gradient -->
+    <linearGradient id="bgLogo" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00B894"/>
+      <stop offset="100%" stop-color="#00D9A5"/>
     </linearGradient>
 
-    <!-- Flower shadow -->
-    <filter id="flowerShadowLogo" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.2"/>
-    </filter>
-
-    <!-- Golden center gradient -->
-    <radialGradient id="centerGoldLogo" cx="50%" cy="40%" r="60%">
-      <stop offset="0%" stop-color="#FFF8E7"/>
-      <stop offset="50%" stop-color="#FFD700"/>
-      <stop offset="100%" stop-color="#F5A623"/>
+    <!-- Golden center -->
+    <radialGradient id="goldLogo" cx="50%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#FFF8E1"/>
+      <stop offset="50%" stop-color="#FFD54F"/>
+      <stop offset="100%" stop-color="#FFB300"/>
     </radialGradient>
+
+    <!-- Shadow -->
+    <filter id="shadowLogo">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.15"/>
+    </filter>
   </defs>
 
   <!-- Squircle background -->
-  <rect x="4" y="4" width="120" height="120" rx="28" ry="28" fill="url(#bgGradientLogo)"/>
+  <rect x="4" y="4" width="120" height="120" rx="27" ry="27" fill="url(#bgLogo)"/>
 
-  <!-- Subtle highlight on top-left -->
-  <ellipse cx="35" cy="35" rx="30" ry="25" fill="white" opacity="0.15"/>
+  <!-- Highlight -->
+  <ellipse cx="38" cy="38" rx="28" ry="22" fill="white" opacity="0.12"/>
 
-  <!-- Tab shape at bottom -->
-  <g filter="url(#flowerShadowLogo)">
-    <path d="M44 95
-             Q44 88 50 85
-             L54 85
-             Q58 85 60 82
-             L60 78
-             Q60 74 64 74
-             Q68 74 68 78
-             L68 82
-             Q70 85 74 85
-             L78 85
-             Q84 88 84 95
-             Z"
-          fill="white"
-          opacity="0.95"/>
-  </g>
-
-  <!-- Stem growing from tab -->
-  <path d="M64 78 Q64 65 64 55"
-        stroke="white"
-        stroke-width="4"
-        stroke-linecap="round"
-        fill="none"
-        opacity="0.9"/>
-
-  <!-- The blooming flower -->
-  <g transform="translate(64, 48)" filter="url(#flowerShadowLogo)">
-    <!-- 5 petals -->
-    <ellipse cx="0" cy="-22" rx="12" ry="18" fill="white" transform="rotate(0)"/>
-    <ellipse cx="0" cy="-20" rx="11" ry="17" fill="white" transform="rotate(72)" opacity="0.95"/>
-    <ellipse cx="0" cy="-19" rx="11" ry="16" fill="white" transform="rotate(144)" opacity="0.92"/>
-    <ellipse cx="0" cy="-19" rx="11" ry="16" fill="white" transform="rotate(216)" opacity="0.92"/>
-    <ellipse cx="0" cy="-20" rx="11" ry="17" fill="white" transform="rotate(288)" opacity="0.95"/>
-
-    <!-- Inner petal highlights -->
-    <ellipse cx="0" cy="-18" rx="7" ry="12" fill="white" transform="rotate(36)" opacity="0.6"/>
-    <ellipse cx="0" cy="-18" rx="7" ry="12" fill="white" transform="rotate(108)" opacity="0.5"/>
-    <ellipse cx="0" cy="-18" rx="7" ry="12" fill="white" transform="rotate(180)" opacity="0.5"/>
-    <ellipse cx="0" cy="-18" rx="7" ry="12" fill="white" transform="rotate(252)" opacity="0.5"/>
-    <ellipse cx="0" cy="-18" rx="7" ry="12" fill="white" transform="rotate(324)" opacity="0.6"/>
+  <!-- 5 tab-shaped petals as flower -->
+  <g transform="translate(64, 62)" filter="url(#shadowLogo)">
+    <path d="M-12 -20 Q-12 -44 0 -50 Q12 -44 12 -20 L8 -8 Q0 -4 -8 -8 Z"
+          fill="white" transform="rotate(0)"/>
+    <path d="M-11 -19 Q-11 -42 0 -48 Q11 -42 11 -19 L7 -8 Q0 -4 -7 -8 Z"
+          fill="white" opacity="0.95" transform="rotate(72)"/>
+    <path d="M-11 -18 Q-11 -40 0 -46 Q11 -40 11 -18 L7 -7 Q0 -3 -7 -7 Z"
+          fill="white" opacity="0.9" transform="rotate(144)"/>
+    <path d="M-11 -18 Q-11 -40 0 -46 Q11 -40 11 -18 L7 -7 Q0 -3 -7 -7 Z"
+          fill="white" opacity="0.9" transform="rotate(216)"/>
+    <path d="M-11 -19 Q-11 -42 0 -48 Q11 -42 11 -19 L7 -8 Q0 -4 -7 -8 Z"
+          fill="white" opacity="0.95" transform="rotate(288)"/>
 
     <!-- Golden center -->
-    <circle cx="0" cy="0" r="10" fill="url(#centerGoldLogo)"/>
-
-    <!-- Center texture -->
-    <circle cx="-3" cy="-3" r="1.5" fill="#F5A623" opacity="0.6"/>
-    <circle cx="3" cy="-2" r="1.5" fill="#F5A623" opacity="0.5"/>
-    <circle cx="0" cy="3" r="1.5" fill="#F5A623" opacity="0.6"/>
-    <circle cx="-4" cy="2" r="1" fill="#F5A623" opacity="0.4"/>
-    <circle cx="4" cy="3" r="1" fill="#F5A623" opacity="0.4"/>
-
-    <!-- Highlight -->
-    <circle cx="-2" cy="-3" r="3" fill="white" opacity="0.5"/>
+    <circle cx="0" cy="0" r="14" fill="url(#goldLogo)"/>
+    <circle cx="-4" cy="-4" r="2" fill="#FFB300" opacity="0.5"/>
+    <circle cx="4" cy="-3" r="2" fill="#FFB300" opacity="0.4"/>
+    <circle cx="0" cy="5" r="2" fill="#FFB300" opacity="0.5"/>
+    <circle cx="-3" cy="-4" r="4" fill="white" opacity="0.45"/>
   </g>
-
-  <!-- Decorative leaves -->
-  <ellipse cx="56" cy="70" rx="6" ry="3" fill="white" opacity="0.7" transform="rotate(-30 56 70)"/>
-  <ellipse cx="72" cy="68" rx="5" ry="2.5" fill="white" opacity="0.6" transform="rotate(25 72 68)"/>
 </svg>
