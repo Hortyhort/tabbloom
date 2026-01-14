@@ -74,77 +74,44 @@ body, html {
   display: none;
 }
 
-/* ========== Level Progress Indicator ========== */
+/* ========== Level Badge (simplified) ========== */
 .level-indicator {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px 4px 4px;
-  background: var(--bg-secondary);
-  border-radius: var(--radius-full);
   cursor: pointer;
-  transition: background var(--duration-fast) var(--ease-default);
-  --level-color: #8B9A6B;
-}
-
-.level-indicator:hover {
-  background: var(--bg-tertiary);
 }
 
 .level-badge {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  width: 24px;
-  height: 24px;
-  background: var(--level-color, var(--logo-green));
+  width: 28px;
+  height: 28px;
+  background: #FFB7C5; /* Petal pink - matches flowers */
   border-radius: var(--radius-full);
   color: white;
-  font-size: 10px;
   font-weight: var(--font-weight-bold);
-  transition: background var(--duration-normal) var(--ease-default);
+  transition: transform var(--duration-fast) var(--ease-default);
+}
+
+.level-indicator:hover .level-badge {
+  transform: scale(1.08);
 }
 
 .level-badge-icon {
-  display: none; /* Hide icon, show number only for compactness */
+  display: none;
 }
 
 .level-badge-num {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 
-.level-progress-container {
-  width: 40px;
-  height: 4px;
-  background: var(--bg-tertiary);
-  border-radius: var(--radius-full);
-  overflow: hidden;
-}
-
-.level-progress-bar {
-  height: 100%;
-  width: 0%;
-  background: var(--level-color, var(--logo-green));
-  border-radius: var(--radius-full);
-  transition: width var(--duration-normal) var(--ease-out);
-}
-
+/* Hide progress elements */
+.level-progress-container,
+.level-progress-bar,
 .level-progress-text {
-  font-size: 9px;
-  color: var(--text-tertiary);
-  white-space: nowrap;
-  max-width: 60px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Hide level text on narrow panels */
-@media (max-width: 340px) {
-  .level-progress-text {
-    display: none;
-  }
+  display: none;
 }
 
 /* ========== Inline Stat Pills ========== */
