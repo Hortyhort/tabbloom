@@ -149,12 +149,7 @@ body, html {
 
 /* ========== Inline Stat Pills ========== */
 .header-stats {
-  display: flex;
-  align-items: center;
-  gap: var(--space-1);
-  flex: 1;
-  justify-content: flex-end;
-  margin-right: var(--space-1);
+  display: none;
 }
 
 .stat-pill {
