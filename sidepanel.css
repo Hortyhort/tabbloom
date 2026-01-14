@@ -74,11 +74,9 @@ body, html {
   display: none;
 }
 
-/* ========== Level Badge (simplified) ========== */
+/* ========== Level Indicator (hidden) ========== */
 .level-indicator {
-  display: flex;
-  align-items: center;
-  cursor: pointer;
+  display: none;
 }
 
 .level-badge {
@@ -163,6 +161,7 @@ body, html {
   align-items: center;
   gap: var(--space-1);
   flex-shrink: 0;
+  margin-left: auto;
 }
 
 /* ========== Overflow Menu ========== */
